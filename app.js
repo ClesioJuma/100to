@@ -22,6 +22,107 @@ const ICON_CHECKLIST =
 const THEME_KEY = "100toGo:theme";
 const ENTRY_KEY = "100toGo:nivelEntrada";
 
+/* ---------------------------------------------------------------------------
+   Realce de código nos enunciados.
+
+   Os enunciados são prosa com identificadores Go pelo meio, e lê-se muito mal
+   quando "type Task struct" aparece com o mesmo peso que o resto da frase.
+   Os padrões abaixo são deliberadamente conservadores: só marcam o que é
+   inequivocamente código. Marcar a menos é aceitável, marcar a mais não é.
+   --------------------------------------------------------------------------- */
+
+// Nomes próprios em CamelCase que são produtos, não identificadores de código.
+const NAO_E_CODIGO = new Set([
+  "GitHub", "GitLab", "PostgreSQL", "MySQL", "NoSQL", "GraphQL", "OpenTelemetry",
+  "RabbitMQ", "JavaScript", "TypeScript", "WebSocket", "OAuth", "OpenAPI",
+  "DockerHub", "JetBrains", "VSCode", "MacOS", "OpenShift", "CloudFlare",
+  "PostgreSQL/", "OpenSSL", "JSON", "YAML",
+]);
+
+const CODE_RE = new RegExp(
+  [
+    // type Nome struct { ... } / interface { ... }
+    "\\btype\\s+[A-Z]\\w*\\s+(?:struct|interface)\\s*\\{[^{}]*\\}",
+    "\\btype\\s+[A-Z]\\w*\\s+(?:struct|interface)\\b",
+    // for i := 0; i < 10; i++
+    "\\bfor\\s+\\w+\\s*:=\\s*[^;{]+;[^;{]+;\\s*[\\w+-]+",
+    // declarações: var x int = 5, z := 5, t, ok := v.(Task)
+    "\\bvar\\s+\\w+(?:\\s+[\\w\\[\\]*.]+)?(?:\\s*=\\s*[\\w.\"'()\\[\\]-]+)?",
+    "\\b\\w+(?:,\\s*\\w+)*\\s*:=\\s*[\\w.\"'()\\[\\]{}<>+*/-]+",
+    // asserção de tipo: v.(Task), v.(type)
+    "\\b\\w+\\.\\((?:type|[A-Z]\\w*)\\)",
+    // retornos múltiplos: (Task, error)
+    "\\((?:[A-Z]\\w*|int|string|bool|error|float64)(?:,\\s*(?:[A-Z]\\w*|int|string|bool|error|float64))+\\)",
+    // if/else mencionado como construção
+    "\\bif/else(?:\\s+if)?\\b",
+    // verbos de formatação: %T, %v, %w
+    "%[TvwsdqxX]\\b",
+    // método com receiver: (t Task) Resumo() string
+    "\\((?:\\w+\\s+)?\\*?[A-Z]\\w*\\)\\s*[A-Z]\\w*\\([^()]*\\)(?:\\s+(?:\\([^()]*\\)|[\\w\\[\\]*.]+))?",
+    // Nome{ campos }
+    "\\b[A-Z]\\w*\\{[^{}]*\\}",
+    // if com inicialização e corpo curto
+    "\\bif\\s+[^{}.]{2,70}\\{[^{}]*\\}",
+    // switch x := v.(type) { ... }
+    "\\bswitch\\s+[^{}]{2,60}\\{[^{}]*\\}",
+    // map[chave]valor
+    "\\bmap\\[[^\\]]+\\][\\w\\[\\]*.]+",
+    // []Tipo, [][]int, [5]int
+    "(?:\\[\\]|\\[\\d+\\])+[A-Za-z_][\\w.]*",
+    // comandos de linha: go test -v ./..., gofmt -w .
+    "\\bgo\\s+(?:run|build|test|vet|mod|get|install|tool|work|generate)\\b(?:\\s+[\\w./@-]*[./@-][\\w./@-]*)*",
+    "\\bgofmt(?:\\s+[\\w./-]*[./-][\\w./-]*)+",
+    "\\b(?:docker|kubectl|helm|terraform)\\s+(?:compose\\s+)?[a-z][\\w-]*",
+    // pacote.Simbolo(args) e pacote.Simbolo
+    "\\b[a-zA-Z_]\\w*\\.[A-Za-z_]\\w*\\([^()]*\\)",
+    "\\b[a-zA-Z_]\\w*\\.[A-Za-z_]\\w*",
+    // Funcao(args) (retornos)
+    "\\b[A-Za-z_]\\w*\\([^()]*\\)(?:\\s*\\([^()]*\\))?",
+    // tags de struct: json:"id"
+    "\\b\\w+:\"[^\"]*\"",
+    // método HTTP + rota
+    "\\b(?:GET|POST|PUT|PATCH|DELETE)\\s+/[\\w/{}.-]*",
+    // ficheiros e pastas do projeto
+    "\\b[\\w.-]+\\.(?:go|yml|yaml|mod|json|proto|tf|md)\\b",
+    "\\b(?:models|services|handlers|cmd|internal)/\\w*",
+    // campo com tipo: Titulo string, Stock int
+    "\\b[A-Z]\\w*\\s+(?:int|int64|string|bool|float64|float32|error|byte|rune)\\b",
+    // ponteiro para tipo exportado
+    "\\*[A-Z]\\w*\\b",
+    // flags conhecidas
+    "(?<=\\s)--?(?:race|cover|short|html|strictPort|v|l|w)\\b",
+    // rotas soltas: /metrics, /ping
+    "(?<=\\s)/[a-z][\\w/{}.-]*",
+    // identificadores CamelCase, filtrados adiante contra NAO_E_CODIGO
+    "\\b[A-Z][a-z]+(?:[A-Z]\\w*)+\\b",
+    // tipos base e palavras-chave da linguagem
+    "\\b(?:int8|int16|int32|int64|uint8|uint16|uint32|uint64|uint|float32|float64|int|string|bool|rune|byte|error|any)\\b",
+    "\\b(?:const|iota|defer|recover|panic|append|copy|delete|close|make|nil|range|select|struct|chan|switch)\\b",
+  ].join("|"),
+  "g"
+);
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function formatEnunciado(texto) {
+  let out = "";
+  let last = 0;
+  let m;
+  CODE_RE.lastIndex = 0;
+  while ((m = CODE_RE.exec(texto)) !== null) {
+    if (m.index < last) continue;
+    if (m[0] === "") { CODE_RE.lastIndex++; continue; }
+    if (NAO_E_CODIGO.has(m[0])) continue;
+    out += escapeHtml(texto.slice(last, m.index));
+    out += "<code>" + escapeHtml(m[0]) + "</code>";
+    last = m.index + m[0].length;
+  }
+  out += escapeHtml(texto.slice(last));
+  return out;
+}
+
 function systemPrefersLight() {
   return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
 }
@@ -478,12 +579,12 @@ function renderGuia(bloco) {
   const el = document.createElement("div");
   el.className = "guia";
 
-  const itens = (guia.precisas || []).map((p) => `<li>${p}</li>`).join("");
+  const itens = (guia.precisas || []).map((p) => `<li>${formatEnunciado(p)}</li>`).join("");
   el.innerHTML = `
     <div class="guia-titulo">${ICON_CHECKLIST}<span>Antes de começar</span></div>
     ${itens ? `<ul class="guia-lista">${itens}</ul>` : ""}
-    ${guia.nota ? `<p class="guia-nota">${guia.nota}</p>` : ""}
-    ${guia.custos ? `<p class="guia-custos"><strong>Pode ter custo:</strong> ${guia.custos}</p>` : ""}
+    ${guia.nota ? `<p class="guia-nota">${formatEnunciado(guia.nota)}</p>` : ""}
+    ${guia.custos ? `<p class="guia-custos"><strong>Pode ter custo:</strong> ${formatEnunciado(guia.custos)}</p>` : ""}
   `;
   return el;
 }
@@ -497,7 +598,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
   header.innerHTML = `
     <h2><span class="bloco-header-badge">${blocoNumero(bloco)}</span>${bloco.titulo}</h2>
     <p class="bloco-faixa">${bloco.faixa}</p>
-    <p class="bloco-desc">${bloco.descricao}</p>
+    <p class="bloco-desc">${formatEnunciado(bloco.descricao)}</p>
   `;
   contentEl.appendChild(header);
 
@@ -563,10 +664,19 @@ function renderBlocoContent(nivel, trilha, bloco) {
     const row = document.createElement("div");
     row.className = "exercicio-row";
     row.innerHTML = `
-      <div class="exercicio-checkbox">${done ? "✓" : ""}</div>
-      <div class="exercicio-num">${idx + 1}.</div>
-      <div class="exercicio-text">${texto}</div>
+      <div class="exercicio-checkbox" aria-hidden="true">✓</div>
+      <div class="exercicio-num">${idx + 1}</div>
+      <div class="exercicio-text">${formatEnunciado(texto)}</div>
     `;
+    row.setAttribute("role", "checkbox");
+    row.setAttribute("tabindex", "0");
+    row.setAttribute("aria-checked", done ? "true" : "false");
+    row.onkeydown = (ev) => {
+      if (ev.key === " " || ev.key === "Enter") {
+        ev.preventDefault();
+        toggleDone(trilha.id, bloco.id, idx);
+      }
+    };
     row.onclick = () => toggleDone(trilha.id, bloco.id, idx);
 
     if (recursosLinks.length) {
