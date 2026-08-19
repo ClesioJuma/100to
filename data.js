@@ -22,7 +22,7 @@ const TRILHA_PRINCIPAL = {
         "Cria uma variável de cada tipo básico: int, float64, string, bool, rune e byte. Imprime o tipo de cada uma com %T no Printf.",
         "Cria constantes com const, incluindo um bloco const ( ... ) que usa iota para gerar uma sequência, por exemplo os dias da semana.",
         "Usa operadores aritméticos, de comparação e lógicos (+ - * / %, == != < > && ||), escrevendo exemplos que mostrem a diferença entre a divisão inteira de 7 / 2 e a divisão com float64.",
-        "Usa if/else e a forma de if com inicialização, como if n := calcular(); n > 0 { ... }. Este padrão aparece constantemente em Go: já o usaste sem saberes em _, err := fmt.Scan(&n); if err == nil.",
+        "Usa if/else e a forma de if com inicialização, como if n := calcular(); n > 0 { ... }. Este padrão aparece constantemente em Go, sobretudo na verificação de erros, na forma if err := fazerAlgo(); err != nil { ... }.",
         "Usa switch sem expressão, equivalente a uma cadeia de if/else if, e switch com um valor.",
         "Pratica os 3 formatos de for em Go, já que a linguagem não tem while nem do-while: for i := 0; i < 10; i++, for com apenas uma condição, e for infinito interrompido com break.",
         "Implementa a função dividir(a, b int) (int, int), com múltiplos valores de retorno, que devolve o quociente e o resto.",
@@ -381,4 +381,424 @@ const TRILHA_DOMINIOS = {
   ],
 };
 
-const TRILHAS = [TRILHA_PRINCIPAL, TRILHA_DOMINIOS];
+// ---------------------------------------------------------------------------
+// Nível 2 — Pleno
+// ---------------------------------------------------------------------------
+
+const TRILHA_N2_CONCEITOS = {
+  id: "n2conceitos",
+  titulo: "Fundamentos de backend",
+  intro: "6 blocos de treino isolado sobre o que separa uma API de exercício de um serviço a sério: contextos, concorrência, base de dados, arquitetura, testes e containers.",
+  blocos: [
+    {
+      id: "b13",
+      titulo: "Bloco 13 — context.Context",
+      faixa: "Ex 13.1–13.8",
+      descricao: "O context.Context é a forma padrão de transportar prazos, cancelamento e dados de âmbito de pedido através das camadas de uma aplicação Go. Aparece na assinatura de quase todas as funções de um serviço real.",
+      recursos: [
+        { label: "Go — pacote context", url: "https://pkg.go.dev/context" },
+        { label: "Go Blog — Go Concurrency Patterns: Context", url: "https://go.dev/blog/context" },
+        { label: "Go by Example — Context", url: "https://gobyexample.com/context" },
+      ],
+      exercicios: [
+        "Cria uma função que recebe context.Context como primeiro parâmetro e devolve um erro quando o contexto for cancelado, usando ctx.Done() e ctx.Err().",
+        "Usa context.WithTimeout para limitares uma operação lenta a 2 segundos, e confirma que ela é interrompida quando ultrapassa esse tempo.",
+        "Usa context.WithCancel para cancelares manualmente uma operação a partir de outra parte do programa, chamando sempre cancel() com defer para libertar recursos.",
+        "Passa um context.Context através de várias camadas de funções, do handler HTTP até à função que faz a consulta, e observa como o cancelamento se propaga em cadeia.",
+        "Lê o contexto de um pedido HTTP com r.Context(), e cancela o trabalho no servidor quando o cliente desliga antes de receber a resposta.",
+        "Usa context.WithValue para transportares um identificador de pedido através das camadas, e explica por escrito porque este mecanismo só deve servir para dados de âmbito de pedido, nunca para parâmetros obrigatórios.",
+        "Cria um tipo próprio para usares como chave em context.WithValue, em vez de uma string, e explica por escrito porque isso evita colisões entre pacotes diferentes.",
+        "Aplica context.Context a uma consulta de base de dados com QueryContext ou ExecContext, e confirma que a consulta é abortada quando o contexto expira.",
+      ],
+    },
+    {
+      id: "b14",
+      titulo: "Bloco 14 — Concorrência: goroutines, channels e sync",
+      faixa: "Ex 14.1–14.12",
+      descricao: "Concorrência é o argumento mais forte de Go. Goroutines são baratas, channels comunicam entre elas, e o pacote sync protege o que é partilhado. Este bloco cobre os padrões que aparecem em serviços reais.",
+      recursos: [
+        { label: "Tour of Go — Concurrency", url: "https://go.dev/tour/concurrency/1" },
+        { label: "Go by Example — Goroutines", url: "https://gobyexample.com/goroutines" },
+        { label: "Go by Example — Channels", url: "https://gobyexample.com/channels" },
+        { label: "Go by Example — WaitGroups", url: "https://gobyexample.com/waitgroups" },
+        { label: "Go by Example — Mutexes", url: "https://gobyexample.com/mutexes" },
+        { label: "Go Blog — Race Detector", url: "https://go.dev/blog/race-detector" },
+      ],
+      exercicios: [
+        "Lança uma goroutine com a palavra-chave go, e usa sync.WaitGroup para esperares que ela termine antes de o programa acabar.",
+        "Cria um channel sem buffer, envia um valor a partir de uma goroutine e recebe-o na função principal.",
+        "Compara um channel sem buffer com um channel com buffer de tamanho 3, e observa em que momento cada envio bloqueia.",
+        "Usa select para leres de dois channels em simultâneo, e trata com um case default o caso em que nenhum tem dados prontos.",
+        "Combina select com context.Context para interromperes um worker quando o contexto for cancelado.",
+        "Fecha um channel com close() e percorre-o com range, confirmando que o loop termina sozinho quando o channel fecha.",
+        "Usa a forma v, ok := <-ch na receção para distinguires um channel fechado de um valor zero legítimo.",
+        "Implementa um worker pool com 3 goroutines que consomem tarefas de um channel de entrada e escrevem resultados num channel de saída.",
+        "Protege um contador partilhado entre goroutines com sync.Mutex, correndo primeiro a versão sem proteção para veres o problema acontecer.",
+        "Corre os testes com a flag -race para detetares data races, e corrige tudo o que o detetor apontar.",
+        "Usa sync.RWMutex numa estrutura com muitas leituras e poucas escritas, e explica por escrito em que situações isso compensa face a um Mutex simples.",
+        "Usa errgroup.Group para lançares várias goroutines que podem falhar, recolhendo o primeiro erro que ocorrer e cancelando as restantes.",
+      ],
+    },
+    {
+      id: "b15",
+      titulo: "Bloco 15 — Persistência: SQL, migrations e transações",
+      faixa: "Ex 15.1–15.10",
+      descricao: "Trocar o map em memória por uma base de dados real traz problemas novos: esquema que evolui, ligações que se esgotam, e operações que têm de acontecer todas ou nenhuma.",
+      recursos: [
+        { label: "Go — pacote database/sql", url: "https://pkg.go.dev/database/sql" },
+        { label: "Go — Tutorial: acessar base de dados SQL", url: "https://go.dev/doc/tutorial/database-access" },
+        { label: "pgx — driver PostgreSQL para Go", url: "https://github.com/jackc/pgx" },
+        { label: "golang-migrate", url: "https://github.com/golang-migrate/migrate" },
+        { label: "PostgreSQL — imagem oficial Docker", url: "https://hub.docker.com/_/postgres" },
+      ],
+      exercicios: [
+        "Sobe uma base de dados PostgreSQL local com Docker, e confirma que consegues ligar-te a ela com o psql ou com um cliente gráfico.",
+        "Liga a aplicação à base de dados com database/sql e o driver pgx, e confirma a ligação com db.PingContext.",
+        "Configura o pool de ligações com SetMaxOpenConns, SetMaxIdleConns e SetConnMaxLifetime, e explica por escrito porque deixar estes valores por omissão é arriscado em produção.",
+        "Instala o golang-migrate e cria a tua primeira migration, com os ficheiros de subida e de reversão.",
+        "Aplica e reverte migrations, confirmando que a reversão devolve o esquema exatamente ao estado anterior.",
+        "Escreve uma consulta com parâmetros no formato $1, $2, em vez de concatenares strings, e explica por escrito como isso previne SQL injection.",
+        "Lê várias linhas com QueryContext, percorre o resultado com rows.Next(), verifica rows.Err() no fim, e fecha as rows com defer.",
+        "Distingue sql.ErrNoRows de um erro real na procura por identificador, devolvendo um erro de domínio próprio quando o registo simplesmente não existe.",
+        "Abre uma transação com BeginTx, executa duas operações e confirma com Commit, garantindo o Rollback com defer para o caso de algo falhar.",
+        "Provoca de propósito uma falha a meio de uma transação, e confirma que nenhuma das operações ficou gravada.",
+      ],
+    },
+    {
+      id: "b16",
+      titulo: "Bloco 16 — Arquitetura em camadas e injeção de dependências",
+      faixa: "Ex 16.1–16.7",
+      descricao: "Separar handler, serviço e repositório só compensa quando as dependências apontam todas para o domínio. Este bloco treina o sentido dessas setas, que é o que torna o código testável e substituível.",
+      recursos: [
+        { label: "Effective Go — Interfaces", url: "https://go.dev/doc/effective_go#interfaces" },
+        { label: "Go Code Review Comments — Interfaces", url: "https://go.dev/wiki/CodeReviewComments#interfaces" },
+        { label: "Standard Go Project Layout", url: "https://github.com/golang-standards/project-layout" },
+      ],
+      exercicios: [
+        "Define a interface do repositório na camada de domínio, e não no pacote que a implementa, para que o domínio não dependa da infraestrutura.",
+        "Implementa duas versões do mesmo repositório, uma em memória e outra com PostgreSQL, ambas a satisfazer a mesma interface.",
+        "Injeta o repositório no serviço através do construtor, recebendo sempre a interface e nunca o tipo concreto.",
+        "Injeta o serviço no handler HTTP da mesma forma, e confirma que o handler não tem maneira de saber qual implementação está a ser usada.",
+        "Monta todas as dependências num único sítio, na função main, e explica por escrito porque concentrar a montagem facilita testar e trocar peças.",
+        "Troca a implementação do repositório de memória para PostgreSQL mudando apenas uma linha no main, sem tocares no serviço nem no handler.",
+        "Desenha num diagrama, ou em comentário, o sentido das dependências entre as camadas, e confirma que todas apontam para o domínio.",
+      ],
+    },
+    {
+      id: "b17",
+      titulo: "Bloco 17 — Testes: mocks, integração e cobertura",
+      faixa: "Ex 17.1–17.9",
+      descricao: "Com camadas bem separadas, a maior parte da lógica testa-se sem servidor nem base de dados. O resto precisa de testes de integração, que são mais lentos e por isso devem correr separados.",
+      recursos: [
+        { label: "Go — pacote testing", url: "https://pkg.go.dev/testing" },
+        { label: "mockery", url: "https://github.com/vektra/mockery" },
+        { label: "gomock (uber-go/mock)", url: "https://github.com/uber-go/mock" },
+        { label: "testcontainers-go", url: "https://golang.testcontainers.org/" },
+        { label: "Go Blog — Cover", url: "https://go.dev/blog/cover" },
+      ],
+      exercicios: [
+        "Escreve um teste de unidade do serviço usando a implementação em memória do repositório, sem base de dados nenhuma envolvida.",
+        "Instala o mockery ou o gomock, e gera um mock a partir da interface do repositório.",
+        "Escreve um teste que configura o mock para devolver um erro, e confirma que o serviço lida corretamente com essa falha.",
+        "Verifica com o mock que um método foi chamado o número de vezes esperado e com os argumentos certos.",
+        "Escreve um teste de integração que corre contra uma base de dados real, e separa-o dos testes rápidos com a flag -short e a função testing.Short().",
+        "Usa testcontainers-go, ou um docker-compose dedicado a testes, para levantares a base de dados automaticamente durante os testes de integração.",
+        "Limpa o estado da base de dados entre testes, seja revertendo uma transação no fim de cada um, seja truncando as tabelas.",
+        "Mede a cobertura com go test -cover, e gera o relatório visual com go tool cover -html.",
+        "Encontra no relatório de cobertura um caminho de erro que ainda não está testado, e escreve o teste que falta.",
+      ],
+    },
+    {
+      id: "b18",
+      titulo: "Bloco 18 — Docker e docker-compose",
+      faixa: "Ex 18.1–18.6",
+      descricao: "Containerizar deixa de ser opcional a partir do momento em que a aplicação depende de base de dados, cache ou filas. É também o que torna o ambiente local reproduzível para qualquer pessoa.",
+      recursos: [
+        { label: "Docker — instalação", url: "https://docs.docker.com/engine/install/" },
+        { label: "Docker — guia de containerização Go", url: "https://docs.docker.com/language/golang/" },
+        { label: "Docker Compose — documentação", url: "https://docs.docker.com/compose/" },
+        { label: "Distroless — imagens base mínimas", url: "https://github.com/GoogleContainerTools/distroless" },
+      ],
+      exercicios: [
+        "Instala o Docker Engine e o docker compose, e confirma a instalação com docker version e docker compose version.",
+        "Escreve um Dockerfile para a aplicação Go usando multi-stage build: compila numa imagem com o compilador, e copia apenas o binário para a imagem final.",
+        "Reduz o tamanho da imagem final usando uma base mínima como alpine ou distroless, e compara o tamanho antes e depois.",
+        "Escreve um ficheiro .dockerignore para não enviares para o build coisas desnecessárias, como a pasta .git e binários locais.",
+        "Escreve um docker-compose.yml que sobe a aplicação e a base de dados em conjunto, ligadas pela mesma rede.",
+        "Passa a configuração para o contentor através de variáveis de ambiente, em vez de a deixares fixa no código.",
+      ],
+    },
+  ],
+};
+
+const TRILHA_N2_PROJETOS = {
+  id: "n2projetos",
+  titulo: "Projetos de nível pleno",
+  intro: "6 projetos que juntam os blocos anteriores em sistemas completos. Cada exercício é uma etapa de trabalho, não uma linha de código, e o conjunto de cada projeto vale por si como peça de portefólio.",
+  blocos: [
+    {
+      id: "d5",
+      titulo: "Projeto 1 — API com Clean Architecture",
+      faixa: "12 exercícios",
+      descricao: "Uma API onde o domínio não conhece HTTP nem SQL, os casos de uso são explícitos, e a infraestrutura é substituível. É a base sobre a qual assentam os projetos seguintes.",
+      recursos: [
+        { label: "Clean Architecture — artigo original", url: "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html" },
+        { label: "Standard Go Project Layout", url: "https://github.com/golang-standards/project-layout" },
+      ],
+      encaixaDepoisDe: "b16",
+      exercicios: [
+        "Cria a estrutura de pastas separando as três camadas: o domínio com entidades e regras, os casos de uso com a lógica de aplicação, e a infraestrutura com base de dados e HTTP.",
+        "Define as entidades do domínio como structs simples, sem tags de JSON nem de base de dados, para que não fiquem presas a nenhuma tecnologia.",
+        "Escreve as regras de validação dentro do domínio, como métodos das próprias entidades.",
+        "Define dentro da camada de domínio as interfaces de que ele precisa, como repositórios, relógio e gerador de identificadores.",
+        "Implementa cada caso de uso como um tipo próprio com um único método de execução, que recebe context.Context e um struct de entrada.",
+        "Devolve erros de domínio próprios a partir dos casos de uso, sem qualquer referência a HTTP ou a SQL.",
+        "Implementa o repositório na camada de infraestrutura, traduzindo entre as linhas da base de dados e as entidades do domínio.",
+        "Cria os DTOs de entrada e de saída da API na camada HTTP, separados das entidades do domínio, e escreve a conversão entre uns e outros.",
+        "Traduz os erros de domínio para códigos de estado HTTP num único sítio, através de um tratamento de erros partilhado.",
+        "Monta a aplicação toda na função main, ligando repositórios, casos de uso e handlers.",
+        "Escreve testes dos casos de uso sem levantares servidor nem base de dados, usando implementações falsas das interfaces.",
+        "Escreve o Dockerfile e o docker-compose desta API, aplicando o que praticaste no Bloco 18.",
+      ],
+    },
+    {
+      id: "d6",
+      titulo: "Projeto 2 — Autenticação e autorização",
+      faixa: "11 exercícios",
+      descricao: "Registo, login, sessões e permissões. É a área onde os erros custam mais caro, por isso cada etapa aqui tem uma razão de segurança por trás.",
+      recursos: [
+        { label: "golang-jwt", url: "https://github.com/golang-jwt/jwt" },
+        { label: "Go — pacote bcrypt", url: "https://pkg.go.dev/golang.org/x/crypto/bcrypt" },
+        { label: "OWASP — Authentication Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html" },
+        { label: "OAuth 2.0 — visão geral", url: "https://oauth.net/2/" },
+      ],
+      encaixaDepoisDe: "d5",
+      exercicios: [
+        "Cria a entidade de utilizador e guarda a palavra-passe com bcrypt, nunca em texto simples.",
+        "Implementa o registo de utilizador, validando o formato do email e a força mínima da palavra-passe.",
+        "Implementa o login comparando a palavra-passe recebida com o hash guardado, e devolve sempre a mesma mensagem genérica quando as credenciais falham, para não revelares se o email existe.",
+        "Gera um token JWT assinado, com as claims de identificação do utilizador e um prazo de validade curto.",
+        "Escreve um middleware que lê o token do cabeçalho Authorization, valida a assinatura e o prazo, e rejeita o pedido quando alguma dessas verificações falha.",
+        "Coloca o utilizador autenticado no context do pedido, e lê-o a partir dos handlers seguintes.",
+        "Implementa refresh tokens, com validade mais longa e guardados do lado do servidor, para que seja possível revogar sessões.",
+        "Implementa a revogação de sessão, garantindo que um refresh token já usado ou revogado deixa de funcionar.",
+        "Define papéis e permissões, e escreve um middleware que autoriza cada rota conforme o papel do utilizador.",
+        "Implementa o fluxo de OAuth2 com um fornecedor externo, trocando o código de autorização por um token e criando ou associando o utilizador local.",
+        "Escreve testes que confirmam que uma rota protegida rejeita pedidos sem token, com token inválido, com token expirado, e com papel insuficiente.",
+      ],
+    },
+    {
+      id: "d7",
+      titulo: "Projeto 3 — Sistema bancário com garantias transacionais",
+      faixa: "11 exercícios",
+      descricao: "Transferências entre contas são o exemplo clássico de consistência de dados: o dinheiro não pode desaparecer nem duplicar, mesmo com operações simultâneas e falhas a meio.",
+      recursos: [
+        { label: "PostgreSQL — níveis de isolamento", url: "https://www.postgresql.org/docs/current/transaction-iso.html" },
+        { label: "PostgreSQL — bloqueios explícitos", url: "https://www.postgresql.org/docs/current/explicit-locking.html" },
+        { label: "Go — pacote database/sql", url: "https://pkg.go.dev/database/sql" },
+      ],
+      encaixaDepoisDe: "b15",
+      exercicios: [
+        "Modela as entidades de conta e de movimento, guardando os montantes em cêntimos como inteiros, e explica por escrito porque usar float64 para dinheiro é perigoso.",
+        "Cria as migrations das tabelas de contas e de movimentos, com as restrições de integridade adequadas.",
+        "Implementa o depósito e o levantamento como operações que registam sempre um movimento, em vez de alterarem o saldo isoladamente.",
+        "Implementa a transferência entre duas contas dentro de uma única transação, garantindo que o débito e o crédito acontecem ambos ou nenhum acontece.",
+        "Impede saldos negativos com uma verificação feita dentro da transação, e não antes dela, para evitares uma condição de corrida.",
+        "Escreve um teste que executa várias transferências em simultâneo sobre a mesma conta, e confirma que o saldo final está correto.",
+        "Provoca um deadlock de propósito, transferindo em sentidos opostos ao mesmo tempo, e resolve-o bloqueando as contas sempre pela mesma ordem de identificador.",
+        "Compara os níveis de isolamento de transação disponíveis, e escolhe o adequado explicando por escrito o que cada um evita.",
+        "Implementa idempotência nas transferências através de uma chave única por pedido, para que uma repetição do mesmo pedido não duplique o movimento.",
+        "Calcula o saldo a partir da soma dos movimentos e compara com o saldo guardado, criando uma verificação de consistência.",
+        "Escreve os testes de integração de todo este fluxo contra uma base de dados real.",
+      ],
+    },
+    {
+      id: "d8",
+      titulo: "Projeto 4 — Cache com Redis",
+      faixa: "7 exercícios",
+      descricao: "Cache acelera leituras frequentes, mas introduz o problema de servir dados desatualizados. Este projeto trata cache como otimização, nunca como fonte de verdade.",
+      recursos: [
+        { label: "Redis — documentação", url: "https://redis.io/docs/latest/" },
+        { label: "go-redis", url: "https://github.com/redis/go-redis" },
+        { label: "Redis — imagem oficial Docker", url: "https://hub.docker.com/_/redis" },
+      ],
+      encaixaDepoisDe: "d5",
+      exercicios: [
+        "Sobe o Redis com Docker, e confirma o acesso com o redis-cli ou com o cliente Go.",
+        "Liga a aplicação ao Redis com o go-redis, e guarda e lê um primeiro valor.",
+        "Aplica o padrão cache-aside numa leitura frequente: procura primeiro na cache, e só vai à base de dados quando não encontrar.",
+        "Define um tempo de expiração adequado para cada tipo de dado, e explica por escrito o critério que usaste.",
+        "Invalida a entrada em cache sempre que o dado for alterado, para não servires informação desatualizada.",
+        "Serializa as estruturas para JSON antes de as guardares, e desserializa na leitura.",
+        "Garante que a aplicação continua a funcionar quando o Redis estiver indisponível, tratando a cache como otimização e não como dependência crítica.",
+      ],
+    },
+    {
+      id: "d9",
+      titulo: "Projeto 5 — Processamento assíncrono com mensageria",
+      faixa: "10 exercícios",
+      descricao: "Trabalho pesado sai do caminho do pedido HTTP e passa para uma fila. Ganha-se resposta rápida, mas passa a ser preciso lidar com repetições, falhas e mensagens que nunca conseguem ser processadas.",
+      recursos: [
+        { label: "RabbitMQ — tutoriais em Go", url: "https://www.rabbitmq.com/tutorials/tutorial-one-go" },
+        { label: "amqp091-go — cliente RabbitMQ", url: "https://github.com/rabbitmq/amqp091-go" },
+        { label: "Apache Kafka — documentação", url: "https://kafka.apache.org/documentation/" },
+        { label: "franz-go — cliente Kafka", url: "https://github.com/twmb/franz-go" },
+      ],
+      encaixaDepoisDe: "b14",
+      exercicios: [
+        "Sobe um RabbitMQ ou um Kafka com Docker, e confirma o acesso à interface de administração ou às ferramentas de linha de comandos.",
+        "Publica a tua primeira mensagem a partir de um produtor escrito em Go.",
+        "Consome essa mensagem num programa separado, confirmando que produtor e consumidor correm de forma independente.",
+        "Define o formato das mensagens como um contrato explícito em JSON, incluindo um campo de versão.",
+        "Publica um evento a partir de um caso de uso, por exemplo quando um pedido é criado, sem que o caso de uso conheça os detalhes do transporte.",
+        "Confirma o processamento da mensagem apenas depois de o trabalho estar concluído, para não perderes mensagens em caso de falha a meio.",
+        "Implementa uma política de repetição com espera crescente para as mensagens que falham por motivos temporários.",
+        "Encaminha para uma fila de mensagens mortas as que falham repetidamente, e explica por escrito porque não se deve tentar indefinidamente.",
+        "Torna o consumidor idempotente, garantindo que processar a mesma mensagem duas vezes não duplica o efeito.",
+        "Processa mensagens em paralelo com vários consumidores, e confirma que a ordem e a consistência se mantêm dentro do que o teu domínio exige.",
+      ],
+    },
+    {
+      id: "d10",
+      titulo: "Projeto 6 — Integração externa com gRPC e webhooks",
+      faixa: "7 exercícios",
+      descricao: "Duas formas de falar com o mundo exterior: gRPC para comunicação entre serviços próprios, com contrato forte, e webhooks para receber eventos de serviços de terceiros.",
+      recursos: [
+        { label: "gRPC — guia de início em Go", url: "https://grpc.io/docs/languages/go/quickstart/" },
+        { label: "Protocol Buffers — documentação", url: "https://protobuf.dev/" },
+        { label: "gRPC — códigos de estado", url: "https://grpc.io/docs/guides/status-codes/" },
+      ],
+      encaixaDepoisDe: "d5",
+      exercicios: [
+        "Instala o protoc e os plugins de Go, e confirma a instalação gerando código a partir de um ficheiro .proto simples.",
+        "Define o contrato do serviço num ficheiro .proto, com as mensagens de pedido e de resposta.",
+        "Implementa o servidor gRPC a partir do código gerado, servindo os métodos definidos no contrato.",
+        "Implementa o cliente gRPC noutro serviço, e chama o método passando um context.Context com timeout.",
+        "Trata os erros de gRPC com os códigos de estado próprios do protocolo, em vez de devolveres apenas mensagens de texto.",
+        "Recebe webhooks de um serviço externo num endpoint HTTP, validando a assinatura do pedido antes de confiares no conteúdo.",
+        "Responde ao webhook rapidamente e processa o trabalho pesado de forma assíncrona, e explica por escrito porque a maioria dos fornecedores exige uma resposta rápida.",
+      ],
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Guias de preparação — o que ter pronto antes de começar cada bloco.
+// A ideia é não assumir que quem chega já tem o ambiente montado.
+// ---------------------------------------------------------------------------
+
+const GUIAS = {
+  b0: {
+    precisas: [
+      "Go instalado na máquina (o exercício 1 deste bloco trata disso)",
+      "Um editor de texto com suporte para Go, como VS Code com a extensão oficial",
+    ],
+    nota: "Este é o ponto de partida. Não é preciso saber nada de Go para começar aqui.",
+  },
+  b1: { precisas: ["Go instalado e um módulo criado com go mod init"] },
+  b2: { precisas: ["Go instalado"], nota: "Vais reutilizar o struct Task do Bloco 1." },
+  b3: { precisas: ["Go instalado"], nota: "Vais reutilizar o Produto e o BuscarPorID dos blocos anteriores." },
+  b4: { precisas: ["Go instalado"] },
+  b5: { precisas: ["Go instalado"], nota: "A partir daqui o projeto passa a ter várias pastas, por isso convém tê-lo dentro de um módulo próprio." },
+  b6: {
+    precisas: [
+      "golangci-lint instalado (ver instruções nos recursos do bloco)",
+      "A biblioteca testify, que se instala com go get github.com/stretchr/testify",
+      "Uma conta no GitHub e o projeto num repositório, para o exercício de CI",
+    ],
+  },
+  b7: { precisas: ["Go instalado"] },
+  b8: {
+    precisas: [
+      "Go instalado",
+      "Uma ferramenta para testar pedidos HTTP: o curl serve, e o Postman ou Insomnia são alternativas gráficas",
+    ],
+  },
+  b9: { precisas: ["O router chi, que se instala com go get github.com/go-chi/chi/v5"] },
+  b10: { precisas: ["A API do Bloco 9 a funcionar"] },
+  b11: { precisas: ["A API do Bloco 10 a funcionar"], nota: "Os testes deste bloco correm contra o service e o repository, sem servidor a correr." },
+  b12: {
+    precisas: [
+      "Uma conta gratuita no Render ou no Railway",
+      "O projeto num repositório do GitHub, que é de onde estas plataformas fazem o deploy",
+    ],
+  },
+  d1: { precisas: ["Um ficheiro de texto ou CSV com os dados de entrada, que podes criar à mão"] },
+  d2: { precisas: ["Go instalado"] },
+  d3: { precisas: ["Um ficheiro de texto com os dados dos participantes, que podes criar à mão"] },
+  d4: { precisas: ["Go instalado"] },
+
+  b13: { precisas: ["Go instalado"], nota: "Não precisas de base de dados para a maior parte deste bloco; só o último exercício a usa." },
+  b14: { precisas: ["Go instalado"], nota: "A flag -race já vem com o Go, não é preciso instalar nada à parte." },
+  b15: {
+    precisas: [
+      "Docker instalado, para levantares o PostgreSQL sem o instalares diretamente na máquina",
+      "O driver pgx, que se instala com go get github.com/jackc/pgx/v5",
+      "A ferramenta golang-migrate, para as migrations",
+    ],
+    nota: "Se preferires, podes instalar o PostgreSQL nativamente em vez de usares Docker. O resto do bloco funciona igual.",
+  },
+  b16: { precisas: ["A base de dados do Bloco 15 a funcionar, para poderes ter duas implementações do mesmo repositório"] },
+  b17: {
+    precisas: [
+      "O mockery ou o gomock instalado, para gerar mocks",
+      "Docker, se quiseres fazer os testes de integração com testcontainers",
+    ],
+  },
+  b18: { precisas: ["Docker Engine e docker compose instalados"], nota: "Em Linux, o docker compose costuma vir como plugin separado; confirma com docker compose version." },
+
+  d5: { precisas: ["Os blocos 13 a 18 concluídos, porque este projeto junta tudo o que eles cobrem"] },
+  d6: {
+    precisas: [
+      "A API do Projeto 1 a funcionar",
+      "As bibliotecas golang-jwt e golang.org/x/crypto/bcrypt",
+      "Uma conta num fornecedor de OAuth2, como Google ou GitHub, para o exercício do fluxo externo",
+    ],
+  },
+  d7: { precisas: ["PostgreSQL a correr e as migrations a funcionar, como praticaste no Bloco 15"] },
+  d8: { precisas: ["Redis a correr, mais simples via Docker", "O cliente go-redis"] },
+  d9: {
+    precisas: [
+      "RabbitMQ ou Kafka a correr, mais simples via Docker",
+      "O cliente correspondente em Go: amqp091-go para RabbitMQ, ou franz-go para Kafka",
+    ],
+    nota: "Escolhe um dos dois. RabbitMQ é mais simples para começar; Kafka é mais comum em sistemas de grande volume.",
+  },
+  d10: {
+    precisas: [
+      "O compilador protoc e os plugins protoc-gen-go e protoc-gen-go-grpc",
+      "Uma ferramenta para expor a tua máquina à internet, como o ngrok, para receberes webhooks reais",
+    ],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Níveis
+// ---------------------------------------------------------------------------
+
+const NIVEIS = [
+  {
+    id: "n1",
+    titulo: "Nível 1",
+    subtitulo: "Iniciante",
+    descricao: "Dos fundamentos da linguagem até uma API REST publicada.",
+    trilhas: [TRILHA_PRINCIPAL, TRILHA_DOMINIOS],
+  },
+  {
+    id: "n2",
+    titulo: "Nível 2",
+    subtitulo: "Pleno",
+    descricao: "Arquitetura, concorrência, base de dados, mensageria e containers.",
+    trilhas: [TRILHA_N2_CONCEITOS, TRILHA_N2_PROJETOS],
+  },
+  {
+    id: "n3",
+    titulo: "Nível 3",
+    subtitulo: "Sénior",
+    descricao: "Em preparação.",
+    trilhas: [],
+    emBreve: true,
+  },
+];
+
+const TRILHAS = NIVEIS.flatMap((n) => n.trilhas);

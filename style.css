@@ -510,6 +510,76 @@ body {
 }
 .bloco-card-count { font-size: 11.5px; color: var(--text-dim); margin-top: 6px; }
 
+.nivel-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.nivel-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.nivel-tab:hover { border-color: var(--accent); }
+.nivel-tab.active { border-color: var(--accent); background: var(--accent-soft); }
+.nivel-tab.locked { opacity: 0.5; }
+.nivel-tab-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.nivel-tab.active .nivel-tab-titulo { color: var(--accent); }
+.nivel-tab-lock { display: inline-flex; color: var(--text-dim); }
+.nivel-tab-sub { font-size: 11px; color: var(--text-dim); }
+
+.guia {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  max-width: 70ch;
+}
+.guia-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.guia-lista {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.guia-lista li { margin-bottom: 4px; }
+.guia-nota {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
 .locked-panel {
   display: flex;
   flex-direction: column;
@@ -568,6 +638,10 @@ body {
   .tagline { display: none; }
   .trilha-tabs { padding: 8px 16px 0; overflow-x: auto; }
   .trilha-tab { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+  .nivel-tabs { padding: 10px 16px; gap: 6px; }
+  .nivel-tab { padding: 6px 12px; }
+  .nivel-tab-titulo { font-size: 12.5px; }
+  .guia { padding: 12px 14px; }
 
   .sidebar {
     display: flex;

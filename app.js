@@ -16,6 +16,9 @@ const ICON_MOON =
 const ICON_LOCK =
   '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>';
 
+const ICON_CHECKLIST =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 7h8"/><path d="M13 17h8"/></svg>';
+
 const THEME_KEY = "100toGo:theme";
 
 function systemPrefersLight() {
@@ -51,7 +54,8 @@ if (window.matchMedia) {
 renderThemeToggle();
 
 let progress = loadProgress();
-let currentTrilha = TRILHAS[0].id;
+let currentNivel = NIVEIS[0].id;
+let currentTrilha = NIVEIS[0].trilhas[0].id;
 let currentBloco = OVERVIEW_ID;
 
 function loadProgress() {
@@ -102,9 +106,9 @@ function trilhaStats(trilha) {
   return { done, total, blocosCompletos, pct: total ? Math.round((done / total) * 100) : 0 };
 }
 
-function overallStats() {
+function nivelStats(nivel) {
   let done = 0, total = 0;
-  for (const trilha of TRILHAS) {
+  for (const trilha of nivel.trilhas) {
     const s = trilhaStats(trilha);
     done += s.done;
     total += s.total;
@@ -112,18 +116,63 @@ function overallStats() {
   return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
 }
 
+function overallStats() {
+  let done = 0, total = 0;
+  for (const nivel of NIVEIS) {
+    const s = nivelStats(nivel);
+    done += s.done;
+    total += s.total;
+  }
+  return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+}
+
 function motivationalText(pct) {
-  if (pct >= 100) return "Trilha completa — parabéns. Não fiques por aqui.";
-  if (pct >= 75) return "Quase lá — a reta final é a que mais ensina.";
+  if (pct >= 100) return "Trilha completa. Parabéns, e não fiques por aqui.";
+  if (pct >= 75) return "Quase lá. A reta final é a que mais ensina.";
   if (pct >= 50) return "Mais de metade do caminho. Não pares agora.";
-  if (pct >= 25) return "Estás a ganhar ritmo. Continua.";
-  if (pct > 0) return "Só o início — cada exercício soma.";
-  return "Ainda não começaste — abre o Bloco 0 e dá o primeiro passo.";
+  if (pct >= 25) return "O ritmo está a aparecer. Continua.";
+  if (pct > 0) return "Só o início. Cada exercício soma.";
+  return "Começa pelo Bloco 0 e dá o primeiro passo.";
 }
 
 function blocoNumero(bloco) {
   const m = bloco.id.match(/\d+/);
   return m ? m[0] : "";
+}
+
+function findNivel(id) {
+  return NIVEIS.find((n) => n.id === id);
+}
+
+function findTrilha(id) {
+  return TRILHAS.find((t) => t.id === id);
+}
+
+function findBloco(trilha, id) {
+  return trilha.blocos.find((b) => b.id === id);
+}
+
+function findBlocoAnywhere(blocoId) {
+  for (const nivel of NIVEIS) {
+    for (const trilha of nivel.trilhas) {
+      const bloco = findBloco(trilha, blocoId);
+      if (bloco) return { nivel, trilha, bloco };
+    }
+  }
+  return null;
+}
+
+function nivelAnterior(nivel) {
+  const idx = NIVEIS.findIndex((n) => n.id === nivel.id);
+  return idx > 0 ? NIVEIS[idx - 1] : null;
+}
+
+function isNivelUnlocked(nivel) {
+  if (nivel.emBreve) return false;
+  const anterior = nivelAnterior(nivel);
+  if (!anterior) return true;
+  const s = nivelStats(anterior);
+  return s.total > 0 && s.done === s.total;
 }
 
 function prerequisiteInfo(trilha, bloco) {
@@ -132,7 +181,8 @@ function prerequisiteInfo(trilha, bloco) {
   }
   const idx = trilha.blocos.findIndex((b) => b.id === bloco.id);
   if (idx > 0) {
-    return { trilha, bloco: trilha.blocos[idx - 1] };
+    const nivel = NIVEIS.find((n) => n.trilhas.some((t) => t.id === trilha.id));
+    return { nivel, trilha, bloco: trilha.blocos[idx - 1] };
   }
   return null;
 }
@@ -144,47 +194,66 @@ function isBlocoUnlocked(trilha, bloco) {
   return s.total > 0 && s.done === s.total;
 }
 
-function findTrilha(id) {
-  return TRILHAS.find((t) => t.id === id);
-}
-function findBloco(trilha, id) {
-  return trilha.blocos.find((b) => b.id === id);
-}
-function findBlocoAnywhere(blocoId) {
-  for (const trilha of TRILHAS) {
-    const bloco = findBloco(trilha, blocoId);
-    if (bloco) return { trilha, bloco };
-  }
-  return null;
-}
-
-function navigateTo(trilhaId, blocoId) {
+function navigateTo(nivelId, trilhaId, blocoId) {
+  currentNivel = nivelId;
   currentTrilha = trilhaId;
   currentBloco = blocoId;
   renderAll();
   document.getElementById("content").scrollTo({ top: 0 });
 }
 
-function renderTabs() {
-  const tabsEl = document.getElementById("trilha-tabs");
-  tabsEl.innerHTML = "";
-  for (const trilha of TRILHAS) {
+function renderNiveis() {
+  const el = document.getElementById("nivel-tabs");
+  el.innerHTML = "";
+  for (const nivel of NIVEIS) {
+    const unlocked = isNivelUnlocked(nivel);
+    const stats = nivelStats(nivel);
     const tab = document.createElement("div");
-    tab.className = "trilha-tab" + (trilha.id === currentTrilha ? " active" : "");
-    tab.textContent = trilha.titulo;
+    tab.className = "nivel-tab" + (nivel.id === currentNivel ? " active" : "") + (unlocked ? "" : " locked");
+    tab.innerHTML = `
+      <span class="nivel-tab-titulo">${nivel.titulo}${unlocked ? "" : ` <span class="nivel-tab-lock">${ICON_LOCK}</span>`}</span>
+      <span class="nivel-tab-sub">${nivel.subtitulo}${stats.total ? ` · ${stats.done}/${stats.total}` : ""}</span>
+    `;
     tab.onclick = () => {
-      currentTrilha = trilha.id;
+      currentNivel = nivel.id;
+      currentTrilha = nivel.trilhas.length ? nivel.trilhas[0].id : null;
       currentBloco = OVERVIEW_ID;
       renderAll();
     };
+    el.appendChild(tab);
+  }
+}
+
+function renderTabs() {
+  const nivel = findNivel(currentNivel);
+  const tabsEl = document.getElementById("trilha-tabs");
+  tabsEl.innerHTML = "";
+  if (!nivel.trilhas.length) {
+    tabsEl.style.display = "none";
+    return;
+  }
+  tabsEl.style.display = "";
+  for (const trilha of nivel.trilhas) {
+    const tab = document.createElement("div");
+    tab.className = "trilha-tab" + (trilha.id === currentTrilha ? " active" : "");
+    tab.textContent = trilha.titulo;
+    tab.onclick = () => navigateTo(nivel.id, trilha.id, OVERVIEW_ID);
     tabsEl.appendChild(tab);
   }
 }
 
 function renderSidebar() {
-  const trilha = findTrilha(currentTrilha);
+  const nivel = findNivel(currentNivel);
   const sidebarEl = document.getElementById("sidebar");
   sidebarEl.innerHTML = "";
+
+  if (!nivel.trilhas.length || !isNivelUnlocked(nivel)) {
+    sidebarEl.style.display = "none";
+    return;
+  }
+  sidebarEl.style.display = "";
+
+  const trilha = findTrilha(currentTrilha) || nivel.trilhas[0];
 
   const overviewItem = document.createElement("div");
   overviewItem.className = "sidebar-item sidebar-item-overview" + (currentBloco === OVERVIEW_ID ? " active" : "");
@@ -192,7 +261,7 @@ function renderSidebar() {
     <div class="sidebar-item-icon">${ICON_GRID}</div>
     <div class="sidebar-item-title">Visão geral</div>
   `;
-  overviewItem.onclick = () => navigateTo(trilha.id, OVERVIEW_ID);
+  overviewItem.onclick = () => navigateTo(nivel.id, trilha.id, OVERVIEW_ID);
   sidebarEl.appendChild(overviewItem);
 
   trilha.blocos.forEach((bloco) => {
@@ -205,12 +274,55 @@ function renderSidebar() {
       <div class="sidebar-item-title">${bloco.titulo}<span class="sidebar-item-faixa">${unlocked ? `${bloco.faixa} · ${stats.done}/${stats.total}` : "Bloqueado"}</span></div>
     `;
     if (!unlocked) item.title = "Conclui o bloco anterior para desbloquear";
-    item.onclick = () => navigateTo(trilha.id, bloco.id);
+    item.onclick = () => navigateTo(nivel.id, trilha.id, bloco.id);
     sidebarEl.appendChild(item);
   });
 }
 
-function renderOverviewContent(trilha) {
+function renderNivelBloqueado(nivel) {
+  const contentEl = document.getElementById("content");
+  const anterior = nivelAnterior(nivel);
+
+  const header = document.createElement("div");
+  header.className = "bloco-header";
+  header.innerHTML = `
+    <h2>${nivel.titulo} — ${nivel.subtitulo}</h2>
+    <p class="bloco-desc">${nivel.descricao}</p>
+  `;
+  contentEl.appendChild(header);
+
+  const panel = document.createElement("div");
+  panel.className = "locked-panel";
+
+  if (nivel.emBreve) {
+    panel.innerHTML = `
+      <div class="locked-panel-icon">${ICON_LOCK}</div>
+      <div class="locked-panel-text">
+        <strong>Ainda em preparação.</strong>
+        Este nível vai cobrir temas de arquitetura distribuída, desempenho e liderança técnica.
+      </div>
+    `;
+    contentEl.appendChild(panel);
+    return;
+  }
+
+  const s = anterior ? nivelStats(anterior) : { done: 0, total: 0 };
+  panel.innerHTML = `
+    <div class="locked-panel-icon">${ICON_LOCK}</div>
+    <div class="locked-panel-text">
+      <strong>Este nível está bloqueado.</strong>
+      Conclui primeiro o ${anterior.titulo}, que está em ${s.done} de ${s.total} exercícios.
+    </div>
+  `;
+  const btn = document.createElement("button");
+  btn.className = "locked-panel-btn";
+  btn.textContent = `Ir para o ${anterior.titulo}`;
+  btn.onclick = () => navigateTo(anterior.id, anterior.trilhas[0].id, OVERVIEW_ID);
+  panel.appendChild(btn);
+  contentEl.appendChild(panel);
+}
+
+function renderOverviewContent(nivel, trilha) {
   const contentEl = document.getElementById("content");
   const stats = trilhaStats(trilha);
 
@@ -231,7 +343,7 @@ function renderOverviewContent(trilha) {
     </div>
     <div class="stat-card">
       <span class="stat-value">${stats.pct}%</span>
-      <span class="stat-label">da trilha</span>
+      <span class="stat-label">desta trilha</span>
     </div>
     <div class="stat-card">
       <span class="stat-value">${stats.blocosCompletos}<span class="stat-value-sep">/${trilha.blocos.length}</span></span>
@@ -257,7 +369,7 @@ function renderOverviewContent(trilha) {
       <div class="progress-bar"><div class="progress-fill" style="width:${unlocked ? bStats.pct : 0}%"></div></div>
       <div class="bloco-card-count">${unlocked ? `${bStats.done} / ${bStats.total}${complete ? " · completo" : ""}` : "Bloqueado"}</div>
     `;
-    card.onclick = () => navigateTo(trilha.id, bloco.id);
+    card.onclick = () => navigateTo(nivel.id, trilha.id, bloco.id);
     grid.appendChild(card);
   });
   contentEl.appendChild(grid);
@@ -273,7 +385,7 @@ function renderRelacionados(bloco) {
       const chip = document.createElement("span");
       chip.className = "relacionado-chip";
       chip.innerHTML = `<span class="tag tag-prereq">Pré-requisito</span> ${alvo.bloco.titulo}`;
-      chip.onclick = () => navigateTo(alvo.trilha.id, alvo.bloco.id);
+      chip.onclick = () => navigateTo(alvo.nivel.id, alvo.trilha.id, alvo.bloco.id);
       wrap.appendChild(chip);
     }
   }
@@ -284,14 +396,30 @@ function renderRelacionados(bloco) {
       const chip = document.createElement("span");
       chip.className = "relacionado-chip";
       chip.innerHTML = `<span class="tag tag-reuse">Reaproveita</span> ${alvo.bloco.titulo}`;
-      chip.onclick = () => navigateTo(alvo.trilha.id, alvo.bloco.id);
+      chip.onclick = () => navigateTo(alvo.nivel.id, alvo.trilha.id, alvo.bloco.id);
       wrap.appendChild(chip);
     }
   }
   return wrap.children.length ? wrap : null;
 }
 
-function renderBlocoContent(trilha, bloco) {
+function renderGuia(bloco) {
+  const guia = typeof GUIAS !== "undefined" ? GUIAS[bloco.id] : null;
+  if (!guia) return null;
+
+  const el = document.createElement("div");
+  el.className = "guia";
+
+  const itens = (guia.precisas || []).map((p) => `<li>${p}</li>`).join("");
+  el.innerHTML = `
+    <div class="guia-titulo">${ICON_CHECKLIST}<span>Antes de começar</span></div>
+    ${itens ? `<ul class="guia-lista">${itens}</ul>` : ""}
+    ${guia.nota ? `<p class="guia-nota">${guia.nota}</p>` : ""}
+  `;
+  return el;
+}
+
+function renderBlocoContent(nivel, trilha, bloco) {
   const contentEl = document.getElementById("content");
   const stats = blocoStats(trilha, bloco);
 
@@ -322,7 +450,7 @@ function renderBlocoContent(trilha, bloco) {
       const btn = document.createElement("button");
       btn.className = "locked-panel-btn";
       btn.textContent = `Ir para ${prereq.bloco.titulo}`;
-      btn.onclick = () => navigateTo(prereq.trilha.id, prereq.bloco.id);
+      btn.onclick = () => navigateTo(prereq.nivel.id, prereq.trilha.id, prereq.bloco.id);
       lockedEl.appendChild(btn);
     }
     contentEl.appendChild(lockedEl);
@@ -336,6 +464,9 @@ function renderBlocoContent(trilha, bloco) {
     <span class="bloco-progress-text">${stats.done} / ${stats.total} concluídos${stats.total > 0 && stats.done === stats.total ? " · bloco completo" : ""}</span>
   `;
   contentEl.appendChild(progressRow);
+
+  const guia = renderGuia(bloco);
+  if (guia) contentEl.appendChild(guia);
 
   const recursosLinks = (bloco.recursos || []).filter((r) => r.url);
 
@@ -403,21 +534,28 @@ function renderBlocoContent(trilha, bloco) {
 }
 
 function renderContent() {
-  const trilha = findTrilha(currentTrilha);
+  const nivel = findNivel(currentNivel);
   const contentEl = document.getElementById("content");
   contentEl.innerHTML = "";
 
+  if (!isNivelUnlocked(nivel)) {
+    renderNivelBloqueado(nivel);
+    return;
+  }
+
+  const trilha = findTrilha(currentTrilha) || nivel.trilhas[0];
+
   if (currentBloco === OVERVIEW_ID) {
-    renderOverviewContent(trilha);
+    renderOverviewContent(nivel, trilha);
     return;
   }
 
   const bloco = findBloco(trilha, currentBloco);
   if (!bloco) {
-    renderOverviewContent(trilha);
+    renderOverviewContent(nivel, trilha);
     return;
   }
-  renderBlocoContent(trilha, bloco);
+  renderBlocoContent(nivel, trilha, bloco);
 }
 
 function renderOverall() {
@@ -429,6 +567,7 @@ function renderOverall() {
 }
 
 function renderAll() {
+  renderNiveis();
   renderTabs();
   renderSidebar();
   renderContent();
@@ -436,7 +575,7 @@ function renderAll() {
 }
 
 document.getElementById("reset-btn").addEventListener("click", () => {
-  if (confirm("Reiniciar todo o progresso das duas trilhas? Esta ação não pode ser desfeita.")) {
+  if (confirm("Reiniciar todo o progresso, em todos os níveis? Esta ação não pode ser desfeita.")) {
     progress = {};
     saveProgress();
     renderAll();
