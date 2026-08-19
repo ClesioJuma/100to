@@ -56,8 +56,9 @@ renderThemeToggle();
 
 let progress = loadProgress();
 let nivelEntrada = loadNivelEntrada();
-let currentNivel = NIVEIS[0].id;
-let currentTrilha = NIVEIS[0].trilhas[0].id;
+// Arranca no nível de entrada escolhido, não sempre no primeiro.
+let currentNivel = nivelEntrada;
+let currentTrilha = (findNivel(nivelEntrada) || NIVEIS[0]).trilhas[0].id;
 let currentBloco = OVERVIEW_ID;
 
 function loadProgress() {
@@ -394,6 +395,13 @@ function renderOverviewContent(nivel, trilha) {
   `;
   contentEl.appendChild(header);
 
+  if (nivel.aviso) {
+    const aviso = document.createElement("div");
+    aviso.className = "nivel-aviso";
+    aviso.innerHTML = `<strong>Sobre este nível</strong><p>${nivel.aviso}</p>`;
+    contentEl.appendChild(aviso);
+  }
+
   const dash = document.createElement("div");
   dash.className = "dashboard-stats";
   dash.innerHTML = `
@@ -475,6 +483,7 @@ function renderGuia(bloco) {
     <div class="guia-titulo">${ICON_CHECKLIST}<span>Antes de começar</span></div>
     ${itens ? `<ul class="guia-lista">${itens}</ul>` : ""}
     ${guia.nota ? `<p class="guia-nota">${guia.nota}</p>` : ""}
+    ${guia.custos ? `<p class="guia-custos"><strong>Pode ter custo:</strong> ${guia.custos}</p>` : ""}
   `;
   return el;
 }

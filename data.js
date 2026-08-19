@@ -683,6 +683,254 @@ const TRILHA_N2_PROJETOS = {
 };
 
 // ---------------------------------------------------------------------------
+// Nível 3 — Sénior
+// ---------------------------------------------------------------------------
+
+const TRILHA_N3_CONCEITOS = {
+  id: "n3conceitos",
+  titulo: "Operação e desempenho",
+  intro: "4 blocos sobre o que só aparece quando o sistema está em produção e com carga: saber o que se passa lá dentro, aguentar falhas, medir antes de otimizar, e correr em infraestrutura declarada como código.",
+  blocos: [
+    {
+      id: "b19",
+      titulo: "Bloco 19 — Observabilidade",
+      faixa: "Ex 19.1–19.12",
+      descricao: "Um sistema distribuído sem observabilidade é uma caixa fechada. Logs estruturados, métricas e tracing são as três formas de ver lá para dentro, e cada uma responde a um tipo diferente de pergunta.",
+      recursos: [
+        { label: "Go — pacote log/slog", url: "https://pkg.go.dev/log/slog" },
+        { label: "Prometheus — cliente Go", url: "https://prometheus.io/docs/guides/go-application/" },
+        { label: "OpenTelemetry — Go", url: "https://opentelemetry.io/docs/languages/go/" },
+        { label: "Jaeger — introdução", url: "https://www.jaegertracing.io/docs/latest/getting-started/" },
+        { label: "Grafana — documentação", url: "https://grafana.com/docs/grafana/latest/" },
+      ],
+      exercicios: [
+        "Substitui os fmt.Println por logging estruturado com log/slog, emitindo cada linha em JSON com nível e campos nomeados.",
+        "Adiciona a cada linha de log o identificador de pedido que vem do context, para conseguires seguir um pedido do princípio ao fim.",
+        "Define os níveis de log com critério, e explica por escrito o que justifica registar um erro em vez de um aviso.",
+        "Garante que nenhum dado sensível, como palavras-passe, tokens ou dados pessoais, chega aos logs, e escreve um teste que o confirme.",
+        "Expõe métricas em formato Prometheus num endpoint /metrics, usando a biblioteca oficial de Go.",
+        "Instrumenta os quatro sinais essenciais do serviço: taxa de pedidos, taxa de erros, duração e saturação.",
+        "Sobe o Prometheus com Docker, e confirma que ele está mesmo a recolher as métricas do teu serviço.",
+        "Cria um painel no Grafana com os sinais que instrumentaste.",
+        "Define um alerta para uma condição que justifique acordar alguém de madrugada, e explica por escrito porque as outras condições não justificam.",
+        "Instrumenta o serviço com OpenTelemetry, gerando spans para as operações principais.",
+        "Propaga o contexto de tracing entre dois serviços, e confirma no Jaeger que o percurso aparece como uma única árvore.",
+        "Usa um trace real para localizares onde se perde a maior parte do tempo num pedido lento.",
+      ],
+    },
+    {
+      id: "b20",
+      titulo: "Bloco 20 — Resiliência",
+      faixa: "Ex 20.1–20.11",
+      descricao: "Falhas em sistemas distribuídos não são exceção, são rotina. Este bloco trata de conter falhas em vez de as propagar, e de desligar sem deixar trabalho a meio.",
+      recursos: [
+        { label: "Go — pacote x/time/rate", url: "https://pkg.go.dev/golang.org/x/time/rate" },
+        { label: "Go — Graceful shutdown com http.Server", url: "https://pkg.go.dev/net/http#Server.Shutdown" },
+        { label: "gobreaker — circuit breaker em Go", url: "https://github.com/sony/gobreaker" },
+        { label: "AWS — Timeouts, retries e backoff com jitter", url: "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/" },
+      ],
+      exercicios: [
+        "Define timeouts explícitos em todas as chamadas de saída, e explica por escrito porque um cliente HTTP sem timeout é um risco de indisponibilidade.",
+        "Configura ReadTimeout, WriteTimeout e IdleTimeout no servidor HTTP.",
+        "Implementa repetição com espera exponencial e jitter, e explica por escrito porque o jitter evita que todos os clientes voltem em simultâneo.",
+        "Distingue as operações que são seguras de repetir das que não são, e garante que só repetes as primeiras.",
+        "Implementa um circuit breaker que deixa de chamar um serviço em falha, e o volta a testar passado um intervalo.",
+        "Testa o circuit breaker simulando um serviço externo indisponível, e confirma as três transições de estado.",
+        "Implementa limitação de taxa por cliente com golang.org/x/time/rate, devolvendo 429 quando o limite for ultrapassado.",
+        "Aplica contrapressão a uma fila de trabalho, recusando trabalho novo quando a fila está cheia em vez de acumulares indefinidamente.",
+        "Implementa encerramento gracioso: deixa de aceitar pedidos novos, termina os que estão em curso, e só depois desliga.",
+        "Garante que o encerramento gracioso fecha também as ligações de base de dados e os consumidores de mensagens, com um prazo máximo.",
+        "Adiciona sondas de estado de vida e de prontidão, e explica por escrito a diferença entre estar vivo e estar pronto a receber tráfego.",
+      ],
+    },
+    {
+      id: "b21",
+      titulo: "Bloco 21 — Desempenho: profiling e carga",
+      faixa: "Ex 21.1–21.10",
+      descricao: "Otimizar sem medir é adivinhar. Este bloco treina o ciclo completo: medir sob carga realista, encontrar o gargalo real com pprof, corrigir, e medir outra vez para confirmar.",
+      recursos: [
+        { label: "Go — pprof", url: "https://pkg.go.dev/runtime/pprof" },
+        { label: "Go Blog — Profiling Go Programs", url: "https://go.dev/blog/pprof" },
+        { label: "Go — pacote net/http/pprof", url: "https://pkg.go.dev/net/http/pprof" },
+        { label: "benchstat", url: "https://pkg.go.dev/golang.org/x/perf/cmd/benchstat" },
+        { label: "k6 — testes de carga", url: "https://grafana.com/docs/k6/latest/" },
+      ],
+      exercicios: [
+        "Escreve um benchmark com testing.B para a função que suspeitas ser lenta.",
+        "Usa b.ReportAllocs() para veres as alocações por operação, e reduz as que forem evitáveis.",
+        "Compara duas implementações com o benchstat, e confirma se a diferença é estatisticamente significativa ou apenas ruído.",
+        "Recolhe um perfil de CPU com o pprof, e identifica a função onde o tempo é realmente gasto.",
+        "Recolhe um perfil de memória, e distingue o que é alocação legítima do que é desperdício.",
+        "Expõe o net/http/pprof no serviço, protegido de forma a não ficar acessível publicamente.",
+        "Escreve um teste de carga com k6 ou vegeta, com um cenário parecido com o uso real do sistema.",
+        "Mede a latência em percentis, como p50, p95 e p99, em vez de média, e explica por escrito porque a média engana.",
+        "Encontra o gargalo real sob carga, corrige-o, e mede outra vez para confirmares o ganho.",
+        "Documenta um caso em que decidiste não otimizar, explicando porque a complexidade acrescentada não compensava o ganho.",
+      ],
+    },
+    {
+      id: "b22",
+      titulo: "Bloco 22 — Kubernetes e infraestrutura como código",
+      faixa: "Ex 22.1–22.10",
+      descricao: "Correr em Kubernetes muda a forma como a aplicação arranca, encerra e é configurada. Declarar a infraestrutura como código torna o ambiente reproduzível em vez de artesanal.",
+      recursos: [
+        { label: "Kubernetes — conceitos", url: "https://kubernetes.io/docs/concepts/" },
+        { label: "kind — Kubernetes local", url: "https://kind.sigs.k8s.io/" },
+        { label: "Terraform — documentação", url: "https://developer.hashicorp.com/terraform/docs" },
+        { label: "Helm — documentação", url: "https://helm.sh/docs/" },
+        { label: "Kustomize", url: "https://kustomize.io/" },
+      ],
+      exercicios: [
+        "Sobe um cluster Kubernetes local com kind ou minikube, e confirma o acesso com o kubectl.",
+        "Escreve os manifestos de Deployment e de Service da tua aplicação, e coloca-a a correr no cluster local.",
+        "Configura os pedidos e os limites de CPU e memória, e explica por escrito o que acontece quando cada um é ultrapassado.",
+        "Liga ao Deployment as sondas de vida e de prontidão que criaste no Bloco 20.",
+        "Passa a configuração por ConfigMap e os segredos por Secret, sem deixares nada fixo nos manifestos.",
+        "Faz uma atualização progressiva sem downtime, e confirma o resultado com um teste de carga a correr durante a atualização.",
+        "Descreve a mesma infraestrutura como código com Terraform, aplicando contra o cluster local.",
+        "Guarda o estado do Terraform fora da tua máquina, e explica por escrito porque o estado partilhado é crítico em equipa.",
+        "Usa Helm ou Kustomize para tratares as diferenças entre ambientes sem duplicares manifestos.",
+        "Provisiona um ambiente numa cloud real e desliga tudo no fim, para não acumulares custos. Este exercício é o único do bloco que pode ter custo, e podes saltá-lo sem perder a matéria.",
+      ],
+    },
+  ],
+};
+
+const TRILHA_N3_PROJETOS = {
+  id: "n3projetos",
+  titulo: "Sistemas distribuídos",
+  intro: "5 projetos onde as decisões passam a ter consequências difíceis de reverter. A partir daqui não há uma resposta certa, há compromissos que é preciso justificar.",
+  blocos: [
+    {
+      id: "d11",
+      titulo: "Projeto 1 — Sistema distribuído com Saga e Outbox",
+      faixa: "14 exercícios",
+      descricao: "Vários serviços a colaborar numa operação que atravessa fronteiras, sem transação distribuída. Consistência eventual, entrega duplicada e falhas parciais deixam de ser teoria.",
+      recursos: [
+        { label: "Padrão Saga", url: "https://microservices.io/patterns/data/saga.html" },
+        { label: "Padrão Transactional Outbox", url: "https://microservices.io/patterns/data/transactional-outbox.html" },
+        { label: "NATS — documentação", url: "https://docs.nats.io/" },
+        { label: "OpenTelemetry — Go", url: "https://opentelemetry.io/docs/languages/go/" },
+      ],
+      encaixaDepoisDe: "b19",
+      exercicios: [
+        "Divide um domínio em dois ou três serviços com responsabilidades claras, e justifica por escrito onde traçaste as fronteiras.",
+        "Define os contratos entre serviços, usando gRPC para as chamadas diretas e eventos para o resto.",
+        "Implementa o padrão Outbox: grava o evento na mesma transação que altera os dados.",
+        "Escreve o publicador que lê a outbox e envia os eventos, marcando-os como publicados.",
+        "Garante entrega pelo menos uma vez, partindo do princípio de que vão acontecer duplicados.",
+        "Torna cada consumidor idempotente, guardando os identificadores dos eventos já processados.",
+        "Implementa uma saga coreografada para uma operação que atravessa serviços, como criar um pedido e reservar stock.",
+        "Implementa as transações compensatórias para cada passo que possa falhar.",
+        "Provoca uma falha a meio da saga, e confirma que o sistema regressa a um estado coerente.",
+        "Compara saga coreografada com saga orquestrada, e justifica por escrito a que escolheste.",
+        "Lida com eventos que chegam fora de ordem, e explica por escrito porque a ordem global raramente está garantida.",
+        "Propaga o tracing distribuído através dos eventos, para conseguires ver a saga inteira num único percurso.",
+        "Documenta o que acontece ao sistema quando um dos serviços fica em baixo durante horas.",
+        "Escreve testes de integração que cobrem o caminho feliz e pelo menos dois caminhos de falha.",
+      ],
+    },
+    {
+      id: "d12",
+      titulo: "Projeto 2 — API Gateway próprio",
+      faixa: "10 exercícios",
+      descricao: "Um ponto de entrada único que concentra autenticação, limites e observabilidade. Construir um serve sobretudo para perceber o que uma solução pronta faz, e quando não vale a pena escrever a tua.",
+      recursos: [
+        { label: "Go — httputil.ReverseProxy", url: "https://pkg.go.dev/net/http/httputil#ReverseProxy" },
+        { label: "Kong — conceitos de API Gateway", url: "https://docs.konghq.com/gateway/latest/" },
+        { label: "Envoy — documentação", url: "https://www.envoyproxy.io/docs/envoy/latest/" },
+      ],
+      encaixaDepoisDe: "b20",
+      exercicios: [
+        "Escreve um proxy inverso em Go com httputil.ReverseProxy, encaminhando para dois serviços internos.",
+        "Encaminha por caminho e por cabeçalho, mantendo a configuração de rotas fora do código.",
+        "Centraliza a autenticação no gateway, para os serviços internos não repetirem essa lógica.",
+        "Aplica limitação de taxa por cliente ao nível do gateway.",
+        "Aplica timeouts e circuit breakers por serviço de destino.",
+        "Propaga o identificador de pedido e o contexto de tracing para os serviços a jusante.",
+        "Normaliza as respostas de erro, para quem consome a API ver sempre o mesmo formato.",
+        "Agrega respostas de dois serviços num único pedido, e explica por escrito quando isso compensa e quando cria acoplamento.",
+        "Mede a latência que o gateway acrescenta, e decide por escrito se o custo se justifica.",
+        "Compara a tua solução com um service mesh e com um gateway pronto, e justifica por escrito em que situação não valeria a pena escrever o teu.",
+      ],
+    },
+    {
+      id: "d13",
+      titulo: "Projeto 3 — Base de dados à escala",
+      faixa: "12 exercícios",
+      descricao: "Índices, réplicas, particionamento e sharding, e a decisão de aplicar ou não CQRS e event sourcing. Aqui o exercício mais importante é justificar quando não aplicar.",
+      recursos: [
+        { label: "PostgreSQL — EXPLAIN", url: "https://www.postgresql.org/docs/current/using-explain.html" },
+        { label: "PostgreSQL — particionamento", url: "https://www.postgresql.org/docs/current/ddl-partitioning.html" },
+        { label: "PostgreSQL — replicação", url: "https://www.postgresql.org/docs/current/high-availability.html" },
+        { label: "Padrão CQRS", url: "https://microservices.io/patterns/data/cqrs.html" },
+        { label: "Padrão Event Sourcing", url: "https://microservices.io/patterns/data/event-sourcing.html" },
+      ],
+      encaixaDepoisDe: "d11",
+      exercicios: [
+        "Identifica com EXPLAIN as consultas mais lentas, e cria os índices em falta.",
+        "Mede o impacto de cada índice nas escritas, e explica por escrito o compromisso que estás a aceitar.",
+        "Configura uma réplica de leitura, e encaminha as leituras para ela.",
+        "Lida com o atraso de replicação, e explica por escrito porque ler logo a seguir a escrever pode devolver dados antigos.",
+        "Particiona uma tabela grande por intervalo de datas, e mede a diferença nas consultas.",
+        "Desenha uma estratégia de sharding, e justifica por escrito a chave que escolheste.",
+        "Explica por escrito o que passa a ser difícil depois de shardar, como junções e transações entre shards.",
+        "Separa os modelos de leitura e de escrita, aplicando CQRS a uma parte do sistema onde isso compense.",
+        "Implementa event sourcing num agregado em que o histórico tenha valor real para o negócio.",
+        "Reconstrói o estado a partir dos eventos, e cria um snapshot para acelerar essa reconstrução.",
+        "Documenta por escrito porque não aplicaste CQRS nem event sourcing ao resto do sistema.",
+        "Escreve uma migração de esquema sem downtime numa tabela grande, em passos compatíveis com a versão anterior da aplicação.",
+      ],
+    },
+    {
+      id: "d14",
+      titulo: "Projeto 4 — Pipeline de CI/CD",
+      faixa: "9 exercícios",
+      descricao: "Do push ao deploy sem passos manuais, com portões de qualidade e segurança pelo caminho, e com forma de reverter depressa quando algo corre mal.",
+      recursos: [
+        { label: "GitHub Actions — documentação", url: "https://docs.github.com/en/actions" },
+        { label: "govulncheck", url: "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck" },
+        { label: "Sigstore cosign — assinatura de imagens", url: "https://docs.sigstore.dev/cosign/signing/overview/" },
+        { label: "Argo Rollouts — lançamentos progressivos", url: "https://argo-rollouts.readthedocs.io/en/stable/" },
+      ],
+      encaixaDepoisDe: "b22",
+      exercicios: [
+        "Monta um pipeline que corre lint, testes e build a cada push.",
+        "Corre também os testes de integração no pipeline, levantando as dependências como serviços de CI.",
+        "Faz o pipeline falhar quando a cobertura descer abaixo do limite que definires.",
+        "Analisa as vulnerabilidades das dependências com o govulncheck, e trata o pipeline como bloqueado quando encontrar algo grave.",
+        "Constrói a imagem e publica-a num registo, etiquetada com o commit que a originou.",
+        "Assina a imagem ou gera o inventário das suas dependências, e explica por escrito porque a proveniência importa.",
+        "Faz deploy automático para um ambiente de testes a cada integração na linha principal.",
+        "Exige aprovação manual para produção, e implementa uma forma de reverter rapidamente.",
+        "Faz um lançamento progressivo para uma fração do tráfego, com reversão automática quando as métricas piorarem. Se não tiveres ambiente onde o experimentar, descreve o plano por escrito.",
+      ],
+    },
+    {
+      id: "d15",
+      titulo: "Projeto 5 — Decisões de arquitetura documentadas",
+      faixa: "7 exercícios",
+      descricao: "A parte do trabalho sénior que fica escrita. Um ADR não serve para provar que se acertou, serve para quem vier depois perceber o contexto em que se decidiu.",
+      recursos: [
+        { label: "Architecture Decision Records", url: "https://adr.github.io/" },
+        { label: "Michael Nygard — Documenting Architecture Decisions", url: "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions" },
+        { label: "Modelo C4 de diagramas", url: "https://c4model.com/" },
+      ],
+      encaixaDepoisDe: "d13",
+      exercicios: [
+        "Escreve o teu primeiro ADR sobre uma decisão que já tomaste nestes projetos, com contexto, opções, decisão e consequências.",
+        "Escreve um ADR sobre uma decisão em que escolheste a opção mais simples, e regista aquilo de que abdicaste.",
+        "Regista as opções que rejeitaste e as razões, para quem vier depois não ter de repetir a análise.",
+        "Escreve um ADR sobre uma decisão que se revelou errada, e o que farias de diferente.",
+        "Documenta a arquitetura do sistema distribuído com diagramas em níveis, do panorama geral ao detalhe.",
+        "Escreve o runbook de uma falha provável, com sintomas, diagnóstico e mitigação.",
+        "Revê os ADRs anteriores e marca os que foram substituídos, mantendo o histórico em vez de o apagares.",
+      ],
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Guias de preparação — o que ter pronto antes de começar cada bloco.
 // A ideia é não assumir que quem chega já tem o ambiente montado.
 // ---------------------------------------------------------------------------
@@ -770,6 +1018,63 @@ const GUIAS = {
       "Uma ferramenta para expor a tua máquina à internet, como o ngrok, para receberes webhooks reais",
     ],
   },
+
+  b19: {
+    precisas: [
+      "Docker, para levantares Prometheus, Grafana e Jaeger localmente",
+      "As bibliotecas prometheus/client_golang e as de OpenTelemetry para Go",
+    ],
+    nota: "O log/slog faz parte da biblioteca padrão desde o Go 1.21, não é preciso instalar nada para os primeiros exercícios.",
+  },
+  b20: {
+    precisas: [
+      "Um serviço externo que possas desligar à vontade, para simulares falhas: serve outro contentor teu",
+      "As bibliotecas golang.org/x/time/rate e, se quiseres, sony/gobreaker",
+    ],
+    nota: "Podes escrever o teu próprio circuit breaker em vez de usares uma biblioteca. Escrevê-lo à mão ensina mais.",
+  },
+  b21: {
+    precisas: [
+      "O k6 ou o vegeta instalado, para os testes de carga",
+      "O benchstat, que se instala com go install golang.org/x/perf/cmd/benchstat@latest",
+    ],
+    nota: "O pprof e o testing.B já vêm com o Go. Para as medições fazerem sentido, fecha o resto das aplicações pesadas enquanto corres os testes.",
+  },
+  b22: {
+    precisas: [
+      "O kind ou o minikube, para teres um cluster Kubernetes na tua própria máquina",
+      "O kubectl e o Terraform",
+      "Pelo menos 8 GB de RAM disponíveis, porque um cluster local com a stack toda pesa",
+    ],
+    custos: "Só o último exercício pede uma cloud real e pode ter custo. Todos os outros correm localmente, de graça. Se avançares para a cloud, usa o nível gratuito e desliga tudo no fim.",
+  },
+  d11: {
+    precisas: [
+      "Kafka, NATS ou RabbitMQ a correr, mais simples via Docker",
+      "PostgreSQL, para a tabela de outbox",
+      "A stack de observabilidade do Bloco 19, para conseguires seguir a saga inteira",
+    ],
+    nota: "Este é o projeto mais pesado do percurso. Vale mais fazê-lo com dois serviços bem feitos do que com cinco pela metade.",
+  },
+  d12: { precisas: ["Dois serviços internos a correr, que podem ser os do Projeto 1"] },
+  d13: {
+    precisas: [
+      "PostgreSQL com possibilidade de configurares uma réplica, o que via Docker se faz com dois contentores",
+      "Um volume de dados suficiente para as diferenças serem visíveis: gera alguns milhões de linhas",
+    ],
+    nota: "Sem dados a sério, os índices e o particionamento não mostram diferença nenhuma. Gerar os dados faz parte do exercício.",
+  },
+  d14: {
+    precisas: [
+      "O projeto num repositório do GitHub, com GitHub Actions ativo",
+      "Um registo de imagens, sendo o GitHub Container Registry o mais direto",
+    ],
+    custos: "GitHub Actions é gratuito em repositórios públicos. O último exercício, de lançamento progressivo, precisa de um ambiente onde o experimentar; se não tiveres, descreve o plano por escrito em vez de o executares.",
+  },
+  d15: {
+    precisas: ["Nada além de um editor de texto e dos projetos anteriores para teres sobre o que decidir"],
+    nota: "É o bloco mais barato de executar e o mais difícil de fazer bem. Escrever uma decisão obriga a perceber que a tomaste.",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -795,9 +1100,9 @@ const NIVEIS = [
     id: "n3",
     titulo: "Nível 3",
     subtitulo: "Sénior",
-    descricao: "Em preparação.",
-    trilhas: [],
-    emBreve: true,
+    descricao: "Sistemas distribuídos, observabilidade, resiliência e desempenho.",
+    trilhas: [TRILHA_N3_CONCEITOS, TRILHA_N3_PROJETOS],
+    aviso: "Este nível é menos verificável do que os anteriores. Nos primeiros, ou o teste passa ou não passa; aqui, escolher entre CQRS e um CRUD simples é julgamento, e uma caixa marcada não valida julgamento, só regista que passaste por ali. Parte do que se aprende a este nível vem da revisão por alguém mais experiente e do impacto real em produção, que nenhum percurso de exercícios substitui. Trata isto como mapa, não como certificado.",
   },
 ];
 
