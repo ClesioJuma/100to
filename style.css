@@ -545,6 +545,31 @@ body {
 .nivel-tab-lock { display: inline-flex; color: var(--text-dim); }
 .nivel-tab-sub { font-size: 11px; color: var(--text-dim); }
 
+.nivel-nota[hidden] { display: none; }
+.nivel-nota {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 24px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.nivel-nota-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.nivel-nota-btn:hover { background: var(--accent-soft); }
+
 .guia {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -619,6 +644,20 @@ body {
   transition: border-color 0.15s ease;
 }
 .locked-panel-btn:hover { border-color: var(--accent); }
+.locked-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.locked-panel-btn.secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border);
+  font-weight: 500;
+}
+.locked-panel-btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
 
 @media (max-width: 800px) {
   .layout { flex-direction: column; }
@@ -641,7 +680,9 @@ body {
   .nivel-tabs { padding: 10px 16px; gap: 6px; }
   .nivel-tab { padding: 6px 12px; }
   .nivel-tab-titulo { font-size: 12.5px; }
+  .nivel-nota { padding: 10px 16px; font-size: 12px; }
   .guia { padding: 12px 14px; }
+  .locked-panel-actions { flex-direction: column; width: 100%; }
 
   .sidebar {
     display: flex;

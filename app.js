@@ -20,6 +20,7 @@ const ICON_CHECKLIST =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 7h8"/><path d="M13 17h8"/></svg>';
 
 const THEME_KEY = "100toGo:theme";
+const ENTRY_KEY = "100toGo:nivelEntrada";
 
 function systemPrefersLight() {
   return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
@@ -54,6 +55,7 @@ if (window.matchMedia) {
 renderThemeToggle();
 
 let progress = loadProgress();
+let nivelEntrada = loadNivelEntrada();
 let currentNivel = NIVEIS[0].id;
 let currentTrilha = NIVEIS[0].trilhas[0].id;
 let currentBloco = OVERVIEW_ID;
@@ -68,6 +70,20 @@ function loadProgress() {
 
 function saveProgress() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+}
+
+function loadNivelEntrada() {
+  const saved = localStorage.getItem(ENTRY_KEY);
+  return NIVEIS.some((n) => n.id === saved && !n.emBreve) ? saved : NIVEIS[0].id;
+}
+
+function saveNivelEntrada(id) {
+  nivelEntrada = id;
+  localStorage.setItem(ENTRY_KEY, id);
+}
+
+function nivelIndex(id) {
+  return NIVEIS.findIndex((n) => n.id === id);
 }
 
 function exKey(trilhaId, blocoId, idx) {
@@ -132,7 +148,10 @@ function motivationalText(pct) {
   if (pct >= 50) return "Mais de metade do caminho. Não pares agora.";
   if (pct >= 25) return "O ritmo está a aparecer. Continua.";
   if (pct > 0) return "Só o início. Cada exercício soma.";
-  return "Começa pelo Bloco 0 e dá o primeiro passo.";
+  const nivel = findNivel(nivelEntrada);
+  const primeiro = nivel && nivel.trilhas.length ? nivel.trilhas[0].blocos[0] : null;
+  const nome = primeiro ? primeiro.titulo.split("—")[0].trim() : null;
+  return nome ? `Começa pelo ${nome} e dá o primeiro passo.` : "Escolhe um bloco e dá o primeiro passo.";
 }
 
 function blocoNumero(bloco) {
@@ -168,7 +187,10 @@ function nivelAnterior(nivel) {
 }
 
 function isNivelUnlocked(nivel) {
-  if (nivel.emBreve) return false;
+  if (nivel.emBreve || !nivel.trilhas.length) return false;
+  // Níveis até ao nível de entrada escolhido estão sempre abertos: quem já
+  // domina os anteriores entra direto, e continua a poder voltar atrás.
+  if (nivelIndex(nivel.id) <= nivelIndex(nivelEntrada)) return true;
   const anterior = nivelAnterior(nivel);
   if (!anterior) return true;
   const s = nivelStats(anterior);
@@ -222,6 +244,28 @@ function renderNiveis() {
     };
     el.appendChild(tab);
   }
+  renderNivelNota();
+}
+
+function renderNivelNota() {
+  const nota = document.getElementById("nivel-nota");
+  if (nivelEntrada === NIVEIS[0].id) {
+    nota.hidden = true;
+    nota.innerHTML = "";
+    return;
+  }
+  const nivel = findNivel(nivelEntrada);
+  nota.hidden = false;
+  nota.innerHTML = `<span>Entraste diretamente no ${nivel.titulo}. Os níveis anteriores continuam abertos para consulta.</span>`;
+
+  const btn = document.createElement("button");
+  btn.className = "nivel-nota-btn";
+  btn.textContent = "Repor progressão desde o início";
+  btn.onclick = () => {
+    saveNivelEntrada(NIVEIS[0].id);
+    navigateTo(NIVEIS[0].id, NIVEIS[0].trilhas[0].id, OVERVIEW_ID);
+  };
+  nota.appendChild(btn);
 }
 
 function renderTabs() {
@@ -311,14 +355,30 @@ function renderNivelBloqueado(nivel) {
     <div class="locked-panel-icon">${ICON_LOCK}</div>
     <div class="locked-panel-text">
       <strong>Este nível está bloqueado.</strong>
-      Conclui primeiro o ${anterior.titulo}, que está em ${s.done} de ${s.total} exercícios.
+      A progressão normal é concluir primeiro o ${anterior.titulo}, que está em ${s.done} de ${s.total} exercícios.
+      Se já dominas esses temas, podes entrar diretamente aqui.
     </div>
   `;
-  const btn = document.createElement("button");
-  btn.className = "locked-panel-btn";
-  btn.textContent = `Ir para o ${anterior.titulo}`;
-  btn.onclick = () => navigateTo(anterior.id, anterior.trilhas[0].id, OVERVIEW_ID);
-  panel.appendChild(btn);
+
+  const acoes = document.createElement("div");
+  acoes.className = "locked-panel-actions";
+
+  const btnAnterior = document.createElement("button");
+  btnAnterior.className = "locked-panel-btn";
+  btnAnterior.textContent = `Ir para o ${anterior.titulo}`;
+  btnAnterior.onclick = () => navigateTo(anterior.id, anterior.trilhas[0].id, OVERVIEW_ID);
+  acoes.appendChild(btnAnterior);
+
+  const btnEntrar = document.createElement("button");
+  btnEntrar.className = "locked-panel-btn secondary";
+  btnEntrar.textContent = `Começar já no ${nivel.titulo}`;
+  btnEntrar.onclick = () => {
+    saveNivelEntrada(nivel.id);
+    navigateTo(nivel.id, nivel.trilhas[0].id, OVERVIEW_ID);
+  };
+  acoes.appendChild(btnEntrar);
+
+  panel.appendChild(acoes);
   contentEl.appendChild(panel);
 }
 
