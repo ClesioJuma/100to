@@ -10,7 +10,7 @@ const TRILHA_PRINCIPAL = {
       faixa: "Ex 0.1–0.15",
       descricao: "Tudo o que precisas de saber antes de structs. Se já dominas isto (variáveis, tipos, funções, loops, ponteiros básicos), passa direto ao Bloco 1. Mesmo assim vale a pena confirmares cada ponto, porque Go tem convenções próprias que diferem de outras linguagens.",
       recursos: [
-        { label: "Tour of Go — Basics", url: "https://go.dev/tour/welcome/1" },
+        { label: "Tour of Go — Basics", url: "https://go.dev/tour/basics/1" },
         { label: "Go by Example — Basics", url: "https://gobyexample.com/" },
         { label: "Effective Go — Formatting", url: "https://go.dev/doc/effective_go#formatting" },
         { label: "How to Install Go", url: "https://go.dev/doc/install" },
@@ -282,7 +282,7 @@ const TRILHA_PRINCIPAL = {
       faixa: "Ex 98–100",
       descricao: "Junta tudo numa API CRUD completa, publicada e testável a partir de fora da tua máquina.",
       recursos: [
-        { label: "Render — Deploy a Go app", url: "https://render.com/docs/deploy-go" },
+        { label: "Render — Deploy a Go app", url: "https://render.com/docs/deploy-go-nethttp" },
         { label: "Railway — documentação", url: "https://docs.railway.app/" },
         { label: "Writing a README", url: "https://www.makeareadme.com/" },
       ],
