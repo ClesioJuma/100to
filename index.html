@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>100toGo — Trilha Go</title>
+<link rel="icon" type="image/png" href="golang.png">
+<link rel="stylesheet" href="style.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem("100toGo:theme");
+    if (saved === "light" || saved === "dark") {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+  })();
+</script>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <img class="brand-logo" src="golang.png" alt="Go">
+    <div>
+      <h1>100toGo</h1>
+      <p class="tagline">A tua trilha Go, do struct básico ao deploy da API</p>
+    </div>
+  </div>
+  <div class="overall-progress">
+    <div class="overall-progress-text">
+      <span id="overall-count">0 / 0</span>
+      <span class="overall-progress-pct" id="overall-pct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="overall-fill"></div>
+    </div>
+    <p class="overall-motivation" id="overall-motivation"></p>
+  </div>
+  <div class="header-actions">
+    <button id="theme-toggle" class="icon-btn" title="Alternar tema"></button>
+    <button id="reset-btn" class="reset-btn" title="Reiniciar todo o progresso">Reiniciar progresso</button>
+  </div>
+</header>
+
+<nav class="trilha-tabs" id="trilha-tabs"></nav>
+
+<main class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <section class="content" id="content"></section>
+</main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
