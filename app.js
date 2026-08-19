@@ -1,6 +1,25 @@
 const STORAGE_KEY = "100toGo:progress";
 const OVERVIEW_ID = "__overview__";
 
+/* Eixos: percursos independentes, cada um com os seus próprios níveis. */
+const EIXOS = [
+  {
+    id: "go",
+    titulo: "Go",
+    descricao: "Escrever o código: da linguagem ao sistema distribuído.",
+    niveis: NIVEIS_GO,
+  },
+  {
+    id: "sd",
+    titulo: "System Design",
+    descricao: "Desenhar o sistema: de um pedido HTTP à escala global.",
+    niveis: NIVEIS_SD,
+  },
+];
+
+const GUIAS_TODOS = Object.assign({}, GUIAS_GO, GUIAS_SD);
+const TRILHAS = EIXOS.flatMap((e) => e.niveis.flatMap((n) => n.trilhas));
+
 const ICON_GRID =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
 
@@ -156,10 +175,11 @@ if (window.matchMedia) {
 renderThemeToggle();
 
 let progress = loadProgress();
-let nivelEntrada = loadNivelEntrada();
-// Arranca no nível de entrada escolhido, não sempre no primeiro.
-let currentNivel = nivelEntrada;
-let currentTrilha = (findNivel(nivelEntrada) || NIVEIS[0]).trilhas[0].id;
+let entradas = loadEntradas();
+let currentEixo = EIXOS[0].id;
+// Arranca no nível de entrada escolhido para este eixo, não sempre no primeiro.
+let currentNivel = nivelEntrada();
+let currentTrilha = findNivel(currentNivel).trilhas[0].id;
 let currentBloco = OVERVIEW_ID;
 
 function loadProgress() {
@@ -174,18 +194,45 @@ function saveProgress() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
 }
 
-function loadNivelEntrada() {
-  const saved = localStorage.getItem(ENTRY_KEY);
-  return NIVEIS.some((n) => n.id === saved && !n.emBreve) ? saved : NIVEIS[0].id;
+// O nível de entrada é escolhido por eixo: alguém pode ser iniciante em Go
+// e já ter bagagem de System Design, ou o contrário.
+function loadEntradas() {
+  let guardado = {};
+  try {
+    const raw = localStorage.getItem(ENTRY_KEY);
+    if (raw && raw.startsWith("{")) guardado = JSON.parse(raw) || {};
+    else if (raw) guardado = { go: raw }; // formato antigo, de quando só havia Go
+  } catch {
+    guardado = {};
+  }
+  const out = {};
+  for (const eixo of EIXOS) {
+    const v = guardado[eixo.id];
+    out[eixo.id] = eixo.niveis.some((n) => n.id === v && !n.emBreve) ? v : eixo.niveis[0].id;
+  }
+  return out;
 }
 
-function saveNivelEntrada(id) {
-  nivelEntrada = id;
-  localStorage.setItem(ENTRY_KEY, id);
+function nivelEntrada(eixoId) {
+  return entradas[eixoId || currentEixo];
+}
+
+function saveNivelEntrada(id, eixoId) {
+  entradas[eixoId || currentEixo] = id;
+  localStorage.setItem(ENTRY_KEY, JSON.stringify(entradas));
+}
+
+function findEixo(id) {
+  return EIXOS.find((e) => e.id === id);
+}
+
+function eixoDoNivel(nivelId) {
+  return EIXOS.find((e) => e.niveis.some((n) => n.id === nivelId));
 }
 
 function nivelIndex(id) {
-  return NIVEIS.findIndex((n) => n.id === id);
+  const eixo = eixoDoNivel(id);
+  return eixo ? eixo.niveis.findIndex((n) => n.id === id) : -1;
 }
 
 function exKey(trilhaId, blocoId, idx) {
@@ -234,14 +281,20 @@ function nivelStats(nivel) {
   return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
 }
 
-function overallStats() {
+function eixoStats(eixo) {
   let done = 0, total = 0;
-  for (const nivel of NIVEIS) {
+  for (const nivel of eixo.niveis) {
     const s = nivelStats(nivel);
     done += s.done;
     total += s.total;
   }
   return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+}
+
+// O contador do cabeçalho mostra o eixo atual, não a soma dos dois: somar
+// Go com System Design daria um número sem significado nenhum.
+function overallStats() {
+  return eixoStats(findEixo(currentEixo));
 }
 
 function motivationalText(pct) {
@@ -250,7 +303,7 @@ function motivationalText(pct) {
   if (pct >= 50) return "Mais de metade do caminho. Não pares agora.";
   if (pct >= 25) return "O ritmo está a aparecer. Continua.";
   if (pct > 0) return "Só o início. Cada exercício soma.";
-  const nivel = findNivel(nivelEntrada);
+  const nivel = findNivel(nivelEntrada());
   const primeiro = nivel && nivel.trilhas.length ? nivel.trilhas[0].blocos[0] : null;
   const nome = primeiro ? primeiro.titulo.split("—")[0].trim() : null;
   return nome ? `Começa pelo ${nome} e dá o primeiro passo.` : "Escolhe um bloco e dá o primeiro passo.";
@@ -262,7 +315,11 @@ function blocoNumero(bloco) {
 }
 
 function findNivel(id) {
-  return NIVEIS.find((n) => n.id === id);
+  for (const eixo of EIXOS) {
+    const n = eixo.niveis.find((x) => x.id === id);
+    if (n) return n;
+  }
+  return null;
 }
 
 function findTrilha(id) {
@@ -274,25 +331,30 @@ function findBloco(trilha, id) {
 }
 
 function findBlocoAnywhere(blocoId) {
-  for (const nivel of NIVEIS) {
-    for (const trilha of nivel.trilhas) {
-      const bloco = findBloco(trilha, blocoId);
-      if (bloco) return { nivel, trilha, bloco };
+  for (const eixo of EIXOS) {
+    for (const nivel of eixo.niveis) {
+      for (const trilha of nivel.trilhas) {
+        const bloco = findBloco(trilha, blocoId);
+        if (bloco) return { eixo, nivel, trilha, bloco };
+      }
     }
   }
   return null;
 }
 
 function nivelAnterior(nivel) {
-  const idx = NIVEIS.findIndex((n) => n.id === nivel.id);
-  return idx > 0 ? NIVEIS[idx - 1] : null;
+  const eixo = eixoDoNivel(nivel.id);
+  if (!eixo) return null;
+  const idx = eixo.niveis.findIndex((n) => n.id === nivel.id);
+  return idx > 0 ? eixo.niveis[idx - 1] : null;
 }
 
 function isNivelUnlocked(nivel) {
   if (nivel.emBreve || !nivel.trilhas.length) return false;
   // Níveis até ao nível de entrada escolhido estão sempre abertos: quem já
   // domina os anteriores entra direto, e continua a poder voltar atrás.
-  if (nivelIndex(nivel.id) <= nivelIndex(nivelEntrada)) return true;
+  const eixo = eixoDoNivel(nivel.id);
+  if (nivelIndex(nivel.id) <= nivelIndex(nivelEntrada(eixo && eixo.id))) return true;
   const anterior = nivelAnterior(nivel);
   if (!anterior) return true;
   const s = nivelStats(anterior);
@@ -305,8 +367,10 @@ function prerequisiteInfo(trilha, bloco) {
   }
   const idx = trilha.blocos.findIndex((b) => b.id === bloco.id);
   if (idx > 0) {
-    const nivel = NIVEIS.find((n) => n.trilhas.some((t) => t.id === trilha.id));
-    return { nivel, trilha, bloco: trilha.blocos[idx - 1] };
+    for (const eixo of EIXOS) {
+      const nivel = eixo.niveis.find((n) => n.trilhas.some((t) => t.id === trilha.id));
+      if (nivel) return { eixo, nivel, trilha, bloco: trilha.blocos[idx - 1] };
+    }
   }
   return null;
 }
@@ -319,6 +383,9 @@ function isBlocoUnlocked(trilha, bloco) {
 }
 
 function navigateTo(nivelId, trilhaId, blocoId) {
+  // O eixo vem sempre implícito no nível, para os chamadores não terem de o passar.
+  const eixo = eixoDoNivel(nivelId);
+  if (eixo) currentEixo = eixo.id;
   currentNivel = nivelId;
   currentTrilha = trilhaId;
   currentBloco = blocoId;
@@ -326,10 +393,32 @@ function navigateTo(nivelId, trilhaId, blocoId) {
   document.getElementById("content").scrollTo({ top: 0 });
 }
 
+function renderEixos() {
+  const el = document.getElementById("eixo-tabs");
+  el.innerHTML = "";
+  for (const eixo of EIXOS) {
+    const stats = eixoStats(eixo);
+    const tab = document.createElement("button");
+    tab.className = "eixo-tab" + (eixo.id === currentEixo ? " active" : "");
+    tab.setAttribute("aria-pressed", eixo.id === currentEixo ? "true" : "false");
+    tab.innerHTML = `
+      <span class="eixo-tab-nome">${eixo.titulo}</span>
+      <span class="eixo-tab-sub">${stats.done}/${stats.total}</span>
+    `;
+    tab.title = eixo.descricao;
+    tab.onclick = () => {
+      currentEixo = eixo.id;
+      const nivel = findNivel(nivelEntrada(eixo.id)) || eixo.niveis[0];
+      navigateTo(nivel.id, nivel.trilhas[0].id, OVERVIEW_ID);
+    };
+    el.appendChild(tab);
+  }
+}
+
 function renderNiveis() {
   const el = document.getElementById("nivel-tabs");
   el.innerHTML = "";
-  for (const nivel of NIVEIS) {
+  for (const nivel of findEixo(currentEixo).niveis) {
     const unlocked = isNivelUnlocked(nivel);
     const stats = nivelStats(nivel);
     const tab = document.createElement("div");
@@ -351,21 +440,23 @@ function renderNiveis() {
 
 function renderNivelNota() {
   const nota = document.getElementById("nivel-nota");
-  if (nivelEntrada === NIVEIS[0].id) {
+  const eixo = findEixo(currentEixo);
+  const primeiro = eixo.niveis[0];
+  if (nivelEntrada() === primeiro.id) {
     nota.hidden = true;
     nota.innerHTML = "";
     return;
   }
-  const nivel = findNivel(nivelEntrada);
+  const nivel = findNivel(nivelEntrada());
   nota.hidden = false;
-  nota.innerHTML = `<span>Entraste diretamente no ${nivel.titulo}. Os níveis anteriores continuam abertos para consulta.</span>`;
+  nota.innerHTML = `<span>Entraste diretamente no ${nivel.titulo} de ${eixo.titulo}. Os níveis anteriores continuam abertos para consulta.</span>`;
 
   const btn = document.createElement("button");
   btn.className = "nivel-nota-btn";
   btn.textContent = "Repor progressão desde o início";
   btn.onclick = () => {
-    saveNivelEntrada(NIVEIS[0].id);
-    navigateTo(NIVEIS[0].id, NIVEIS[0].trilhas[0].id, OVERVIEW_ID);
+    saveNivelEntrada(primeiro.id);
+    navigateTo(primeiro.id, primeiro.trilhas[0].id, OVERVIEW_ID);
   };
   nota.appendChild(btn);
 }
@@ -573,7 +664,7 @@ function renderRelacionados(bloco) {
 }
 
 function renderGuia(bloco) {
-  const guia = typeof GUIAS !== "undefined" ? GUIAS[bloco.id] : null;
+  const guia = GUIAS_TODOS[bloco.id];
   if (!guia) return null;
 
   const el = document.createElement("div");
@@ -746,6 +837,7 @@ function renderOverall() {
 }
 
 function renderAll() {
+  renderEixos();
   renderNiveis();
   renderTabs();
   renderSidebar();
@@ -754,7 +846,7 @@ function renderAll() {
 }
 
 document.getElementById("reset-btn").addEventListener("click", () => {
-  if (confirm("Reiniciar todo o progresso, em todos os níveis? Esta ação não pode ser desfeita.")) {
+  if (confirm("Reiniciar todo o progresso, em todos os eixos e níveis? Esta ação não pode ser desfeita.")) {
     progress = {};
     saveProgress();
     renderAll();

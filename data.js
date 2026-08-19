@@ -1081,7 +1081,7 @@ const GUIAS = {
 // Níveis
 // ---------------------------------------------------------------------------
 
-const NIVEIS = [
+const NIVEIS_GO = [
   {
     id: "n1",
     titulo: "Nível 1",
@@ -1106,4 +1106,4 @@ const NIVEIS = [
   },
 ];
 
-const TRILHAS = NIVEIS.flatMap((n) => n.trilhas);
+const GUIAS_GO = GUIAS;

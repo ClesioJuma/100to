@@ -201,6 +201,41 @@ code {
   line-height: 1.3;
 }
 
+/* Seletor de eixo: junto à marca, para "100to" + "Go" se ler como um todo */
+.eixo-tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: var(--s3);
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.eixo-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: var(--s2) var(--s4);
+  min-height: 38px;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.eixo-tab:hover { color: var(--text); background: var(--surface-hover); }
+.eixo-tab.active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow); }
+.eixo-tab-nome { font-size: var(--fs-base); font-weight: 600; line-height: 1.2; }
+.eixo-tab-sub {
+  font-size: var(--fs-2xs);
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
 .overall-progress { flex: 1; min-width: 260px; max-width: 460px; }
 .overall-progress-text {
   display: flex;
@@ -1000,6 +1035,10 @@ code {
   .brand-logo { width: 28px; height: 28px; }
   .brand h1 { font-size: var(--fs-md); }
   .tagline { display: none; }
+  .brand { flex: 1; }
+  .eixo-tabs { margin-left: auto; }
+  .eixo-tab { padding: var(--s2) var(--s3); }
+  .eixo-tab-nome { font-size: var(--fs-sm); }
 
   .nivel-tabs { padding: var(--s2) var(--s4); gap: var(--s2); }
   .nivel-tab { padding: var(--s2) var(--s3); }
