@@ -993,7 +993,10 @@ function renderBlocoContent(nivel, trilha, bloco) {
   } else if (BLOCOS_COM_CORRECAO_IA.includes(bloco.id) && !API_DISPONIVEL) {
     const nota = document.createElement("p");
     nota.className = "bloco-nota";
-    nota.innerHTML = `O chat de dúvidas e a correção com IA só estão disponíveis na versão <a href="https://100to-clesio-s-projects.vercel.app${location.pathname}" target="_blank" rel="noopener noreferrer">Vercel</a> deste site, não no GitHub Pages.`;
+    // No GitHub Pages o site vive em /100to/..., mas na Vercel vive na raiz do
+    // domínio, por isso o prefixo do nome do repositório tem de ser removido.
+    const caminhoSemRepo = location.pathname.replace(/^\/100to(\/|$)/, "/");
+    nota.innerHTML = `O chat de dúvidas e a correção com IA só estão disponíveis na versão <a href="https://100to-clesio-s-projects.vercel.app${caminhoSemRepo}" target="_blank" rel="noopener noreferrer">Vercel</a> deste site, não no GitHub Pages.`;
     contentEl.appendChild(nota);
   }
 
