@@ -59,7 +59,7 @@ package main
 import "fmt"
 
 func main() {
-	fmt.Println("Hello, World")
+    fmt.Println("Hello, World")
 }
 ~~~
 
@@ -88,11 +88,11 @@ rune é só um nome alternativo para int32, e representa um carácter Unicode. b
 
         4: `~~~
 const (
-	Segunda = iota // 0
-	Terca           // 1
-	Quarta          // 2
-	Quinta          // 3
-	Sexta           // 4
+    Segunda = iota // 0
+    Terca           // 1
+    Quarta          // 2
+    Quinta          // 3
+    Sexta           // 4
 )
 ~~~
 
@@ -108,11 +108,11 @@ Quando os dois operandos de / são inteiros, Go faz divisão inteira e descarta 
 
         6: `~~~
 if n := calcular(); n > 0 {
-	fmt.Println("positivo:", n)
+    fmt.Println("positivo:", n)
 }
 
 if err := fazerAlgo(); err != nil {
-	fmt.Println("erro:", err)
+    fmt.Println("erro:", err)
 }
 ~~~
 
@@ -121,18 +121,18 @@ A variável declarada antes do ; só existe dentro do if, e do else, se houver. 
         7: `~~~
 switch {
 case idade < 12:
-	fmt.Println("criança")
+    fmt.Println("criança")
 case idade < 18:
-	fmt.Println("adolescente")
+    fmt.Println("adolescente")
 default:
-	fmt.Println("adulto")
+    fmt.Println("adulto")
 }
 
 switch dia {
 case "sábado", "domingo":
-	fmt.Println("fim de semana")
+    fmt.Println("fim de semana")
 default:
-	fmt.Println("dia útil")
+    fmt.Println("dia útil")
 }
 ~~~
 
@@ -140,18 +140,18 @@ O switch sem expressão testa uma condição booleana em cada case, tal como uma
 
         8: `~~~
 for i := 0; i < 10; i++ {
-	fmt.Println(i)
+    fmt.Println(i)
 }
 
 n := 10
 for n > 0 {
-	n--
+    n--
 }
 
 for {
-	if condicaoDeParagem() {
-		break
-	}
+    if condicaoDeParagem() {
+        break
+    }
 }
 ~~~
 
@@ -159,7 +159,7 @@ O segundo formato, só com a condição, equivale a um while. O terceiro, sem na
 
         9: `~~~
 func dividir(a, b int) (int, int) {
-	return a / b, a % b
+    return a / b, a % b
 }
 
 q, r := dividir(17, 5)
@@ -169,9 +169,9 @@ Uma função em Go pode devolver mais do que um valor, separados por vírgula ta
 
         10: `~~~
 func dividir(a, b int) (q, r int) {
-	q = a / b
-	r = a % b
-	return
+    q = a / b
+    r = a % b
+    return
 }
 ~~~
 
@@ -179,11 +179,11 @@ q e r já existem, com o valor zero, assim que a função começa a correr. O re
 
         11: `~~~
 func soma(numeros ...int) int {
-	total := 0
-	for _, n := range numeros {
-		total += n
-	}
-	return total
+    total := 0
+    for _, n := range numeros {
+        total += n
+    }
+    return total
 }
 
 soma(1, 2, 3) // 6
@@ -206,11 +206,11 @@ fmt.Println(x) // 10
 
         13: `~~~
 func Dobrar(n *int) {
-	*n = *n * 2
+    *n = *n * 2
 }
 
 func DobrarValor(n int) int {
-	return n * 2
+    return n * 2
 }
 
 x := 5
