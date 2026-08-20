@@ -564,6 +564,106 @@ fmt.Println(t1) // chama String() automaticamente, imprime "[✓] Estudar Go"
 
 fmt.Stringer é uma interface com um único método, String() string. Qualquer tipo que a implemente passa a controlar a sua própria representação em texto, e o pacote fmt usa-a sempre que tenta imprimir um valor desse tipo.`,
       },
+      livro: `Go não tem classes. Structs agrupam dados, methods ligam comportamento a esses dados, e a composição substitui a herança. Este capítulo é a base de quase tudo o que se segue na trilha: a escolha entre pointer receiver e value receiver, sobretudo, vai voltar a aparecer em praticamente todos os blocos daqui para a frente.
+
+## Structs: dados sem comportamento próprio
+
+Uma struct é um tipo composto, um agrupamento de campos com nome e tipo próprios.
+
+~~~
+type Task struct {
+    ID        int
+    Titulo    string
+    Concluida bool
+}
+
+t := Task{ID: 1, Titulo: "Estudar Go", Concluida: false}
+~~~
+
+Por si só, uma struct não faz nada: é só dados. O que a torna útil é poderes anexar-lhe comportamento através de methods, e poderes agrupá-la em slices e maps, como vais fazer já no Bloco 2.
+
+Um campo com maiúscula inicial, como ID ou Titulo, é exportado: fica visível fora do pacote onde a struct está definida. Um campo em minúscula só é visível dentro do próprio pacote. Esta é a única forma de controlar visibilidade em Go: não há palavras-chave como public ou private, é tudo decidido pela primeira letra do nome.
+
+## Methods: a função que pertence a um tipo
+
+Um method é uma função normal, com uma particularidade: declara-se com um recetor entre func e o nome do method, o que a liga a um tipo específico.
+
+~~~
+func (t Task) Resumo() string {
+    if t.Concluida {
+        return "[✓] " + t.Titulo
+    }
+    return "[ ] " + t.Titulo
+}
+
+t.Resumo() // chamas o method como se fosse um campo
+~~~
+
+t Task é o recetor. Dentro do method, t comporta-se como qualquer outro parâmetro: podes ler os seus campos, mas se o recebes por valor, como aqui, qualquer alteração que faças a t desaparece assim que o method termina, porque estás a trabalhar sobre uma cópia.
+
+## A escolha entre pointer receiver e value receiver
+
+Esta é a decisão mais importante deste bloco, e a que mais se repete no resto da trilha.
+
+~~~
+func (t *Task) Concluir() {
+    t.Concluida = true
+}
+
+func (t Task) ConcluirValor() {
+    t.Concluida = true // só altera a cópia local, o efeito perde-se
+}
+~~~
+
+Com pointer receiver, *Task, o method recebe o endereço da struct original, e qualquer alteração que faça é permanente. Com value receiver, Task, recebe uma cópia, e as alterações desaparecem quando o method termina. A regra prática: se o method precisa de alterar o struct, usa pointer receiver. Se só precisa de ler, e a struct é pequena, value receiver é mais simples e evita uma indireção desnecessária.
+
+Há uma segunda razão para pointer receiver, que só se torna relevante com structs maiores: copiar uma struct grande, valor a valor, custa mais do que copiar um ponteiro de 8 bytes. Na prática, muitos projetos Go escolhem pointer receiver para quase todos os methods de um tipo, só para manterem a consistência, mesmo quando um method em particular não precisa de alterar nada.
+
+## Structs aninhados e embedding
+
+Um campo de uma struct pode ser, ele próprio, outra struct.
+
+~~~
+type Endereco struct {
+    Cidade, Pais string
+}
+
+type Cliente struct {
+    Nome     string
+    Endereco Endereco // campo nomeado
+}
+
+c.Endereco.Cidade // precisas do caminho completo
+~~~
+
+Quando o campo tem nome próprio, como Endereco aqui, acedes-lhe através desse nome. Mas Go tem uma segunda forma de compor structs, chamada embedding, em que omites o nome do campo:
+
+~~~
+type ClienteVIP struct {
+    Cliente // embutido, sem nome de campo
+    Desconto float64
+}
+
+vip.Nome // funciona diretamente, sem vip.Cliente.Nome
+~~~
+
+Quando embutes um tipo sem lhe dares nome, os seus campos ficam promovidos: passam a ser acessíveis diretamente a partir do tipo que o embute, como se lhe pertencessem. Isto é o mais próximo que Go chega de herança, mas é composição, não herança a sério: ClienteVIP não é um Cliente aos olhos do sistema de tipos, só tem os seus campos acessíveis por conveniência de escrita.
+
+## Como Go decide o que imprimir: fmt.Stringer
+
+fmt.Stringer é uma interface com um único method, String() string. Qualquer tipo que a implemente controla a sua própria representação em texto.
+
+~~~
+func (t Task) String() string {
+    return t.Resumo()
+}
+
+fmt.Println(t1) // chama String() automaticamente
+~~~
+
+Não precisas de dizer explicitamente que Task implementa fmt.Stringer: basta ter um method String() string com esta assinatura exata, e o pacote fmt passa a usá-lo sempre que tenta imprimir um valor desse tipo. Isto é a tua primeira introdução a interfaces em Go, que só vais formalizar no Bloco 4, mas que já está a acontecer por baixo desde o primeiro fmt.Println que escreveste.
+
+No Bloco 2 vais colocar muitas Tasks dentro de um slice, e usar o Resumo() e o Concluir() que aqui construíste sobre coleções inteiras, não valores isolados.`,
     },
     {
       id: "b2",
@@ -774,6 +874,82 @@ func Achatar(matriz [][]int) []int {
 
 linha... espalha os elementos do slice linha como argumentos individuais de append, em vez de os acrescentares como um único elemento slice-dentro-de-slice.`,
       },
+      livro: `Slices são a estrutura de dados que mais vais usar em Go, de longe. Este capítulo explica o que são por dentro, porque isso importa, e como se relacionam com arrays e maps, as outras duas formas de agrupar dados que a linguagem oferece.
+
+## Arrays: tamanho fixo, por isso raramente usados diretamente
+
+Um array em Go tem um tamanho que faz parte do seu próprio tipo.
+
+~~~
+var arr [5]int // [5]int e [3]int são tipos diferentes, sem conversão implícita
+arr[0] = 10
+~~~
+
+Como o tamanho nunca muda, e está gravado no tipo, arrays são pouco flexíveis: uma função que recebe [5]int não aceita um [3]int. Na prática, usa-se muito pouco um array diretamente em código Go; o que se usa é um slice.
+
+## Slices: como funcionam por dentro
+
+Um slice não é uma estrutura de dados nova, é uma vista sobre um array: um ponteiro para o início dos dados, um comprimento, e uma capacidade.
+
+~~~
+var s []int              // slice nil, sem array por baixo ainda
+s = append(s, 10, 20)    // agora tem um array por baixo, len 2
+~~~
+
+Isto explica um comportamento que confunde quem vem de outras linguagens: dois slices podem partilhar o mesmo array por baixo. Se fatiares um slice a partir de outro, sem copy(), alterar um pode alterar o outro, porque ambos apontam para a mesma memória. É também por isto que copy() existe: para garantires que uma cópia é mesmo independente.
+
+## append e o crescimento de um slice
+
+append acrescenta elementos a um slice, e devolve o slice atualizado, que pode ou não ser o mesmo array de antes.
+
+~~~
+pendentes := []Task{}
+for _, t := range tarefas {
+    if !t.Concluida {
+        pendentes = append(pendentes, t)
+    }
+}
+~~~
+
+Enquanto a capacidade do array por baixo chega, append só escreve na próxima posição livre. Quando a capacidade se esgota, Go aloca um array novo, maior, copia os elementos antigos, e o slice devolvido passa a apontar para esse array novo. É por isto que se escreve sempre pendentes = append(pendentes, t), e nunca só append(pendentes, t): o slice original pode já não ser válido depois da chamada.
+
+## Maps: o padrão (valor, ok)
+
+Um map guarda pares chave-valor, e ler uma chave que não existe não gera erro, devolve o valor zero do tipo.
+
+~~~
+porID := make(map[int]Task)
+porID[t.ID] = t
+
+t, ok := porID[99]
+// ok é false se a chave não existir; t fica com o valor zero de Task
+~~~
+
+Este padrão, (valor, ok), aparece por toda a parte em Go: é a forma idiomática de uma operação que pode falhar sem que essa falha seja um erro a sério, e vais voltar a vê-lo com type assertions no Bloco 4.
+
+## Ordenar com sort.Slice
+
+sort.Slice ordena um slice in-place, a partir de uma função que compara dois elementos pelos seus índices.
+
+~~~
+sort.Slice(tarefas, func(i, j int) bool {
+    return tarefas[i].Titulo < tarefas[j].Titulo
+})
+~~~
+
+A função devolve true quando o elemento i deve ficar antes do j. Podes usar qualquer critério de comparação que consigas exprimir como um bool, incluindo critérios compostos, como pendentes primeiro e depois por título.
+
+## Cópias, referências, e o que copy() resolve
+
+~~~
+copia := make([]Task, len(original))
+copy(copia, original)
+copia[0].Titulo = "Alterado" // não afeta original
+~~~
+
+Sem o make() e o copy(), se escrevesses copia := original, as duas variáveis apontariam para o mesmo array por baixo, e alterar uma alteraria a outra. copy() precisa de um destino já com o tamanho certo, e copia só os elementos que couberem em ambos.
+
+No Bloco 3, as mesmas funções que aqui construíste, como BuscarPorID, vão começar a devolver erros em vez de um booleano simples, à medida que o que pode correr mal deixa de ser só "não encontrado".`,
     },
     {
       id: "b3",
@@ -937,6 +1113,97 @@ fmt.Println("o programa continua") // esta linha corre na mesma
 
 defer agenda a função anónima para correr quando seguro() terminar, mesmo que termine por panic. recover() só tem efeito dentro de uma função chamada diretamente por defer, e devolve nil quando não há panic em curso.`,
       },
+      livro: `Go não tem exceções. Não há try/catch, nem throw: um erro é um valor normal, do tipo error, devolvido como o último resultado de uma função, e verificado explicitamente logo a seguir a cada chamada. Este capítulo explica porque essa escolha de desenho existe, e como trabalhar com ela sem que o código fique cheio de ifs repetidos.
+
+## O erro como valor de retorno
+
+~~~
+func Dividir(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, errors.New("divisão por zero")
+    }
+    return a / b, nil
+}
+
+resultado, err := Dividir(10, 0)
+if err != nil {
+    // trata o erro aqui, explicitamente
+}
+~~~
+
+Por convenção, o erro é sempre o último valor devolvido, e devolve-se nil quando não há erro. Isto obriga quem chama a decidir, ali mesmo, o que fazer com uma falha, em vez de deixar uma exceção subir silenciosamente por várias camadas de chamadas até alguém a apanhar, ou não apanhar. A desvantagem é visível: muito if err != nil repetido. A vantagem é que nunca há uma falha escondida: se uma função pode falhar, isso está na sua assinatura, visível a quem a lê.
+
+## Erros customizados: quando um struct compensa mais que uma string
+
+errors.New cria um erro simples, só com uma mensagem de texto. Quando quem recebe o erro precisa de mais do que ler uma frase, um erro customizado guarda dados estruturados.
+
+~~~
+type ErroStockInsuficiente struct {
+    Pedido, Disponivel int
+}
+
+func (e ErroStockInsuficiente) Error() string {
+    return fmt.Sprintf("pedido de %d, mas só há %d em stock", e.Pedido, e.Disponivel)
+}
+~~~
+
+Qualquer tipo com um method Error() string satisfaz a interface error, a mesma ideia de satisfação implícita que já viste com fmt.Stringer no Bloco 1. Isto significa que um erro em Go pode ser, ao mesmo tempo, uma mensagem de texto e uma estrutura de dados que o código pode inspecionar.
+
+## Recuperar um erro customizado com errors.As
+
+~~~
+err := produto.Vender(10)
+
+var errStock ErroStockInsuficiente
+if errors.As(err, &errStock) {
+    fmt.Println("faltam", errStock.Pedido-errStock.Disponivel)
+}
+~~~
+
+errors.As verifica se err é, ou contém, um valor do tipo de errStock, e se for, copia-o para essa variável, dando-te acesso aos campos Pedido e Disponivel, não só à mensagem.
+
+## Contexto com %w e a cadeia de erros
+
+À medida que um erro sobe por várias camadas de uma aplicação, cada camada pode querer acrescentar contexto sem esconder o erro original.
+
+~~~
+if err != nil {
+    return fmt.Errorf("ao processar pedido %d: %w", id, err)
+}
+~~~
+
+%w embrulha o erro original dentro do novo. A diferença para %v, que só o converteria em texto, é que errors.Is e errors.As continuam a conseguir encontrar o erro original mesmo depois de várias camadas de fmt.Errorf com %w, uma sobre a outra. É esta cadeia que te permite escrever mensagens de erro informativas em cada camada, sem perderes a capacidade de verificar programaticamente o que correu mal lá no fundo.
+
+## Sentinel errors e errors.Is
+
+Um sentinel error é um valor de erro específico, definido uma vez, para identidade, não para dados.
+
+~~~
+var ErrNaoEncontrado = errors.New("não encontrado")
+
+if errors.Is(err, ErrNaoEncontrado) {
+    // trata especificamente este caso
+}
+~~~
+
+Ao contrário de ErroStockInsuficiente, aqui não há campos a inspecionar, só a pergunta "é este erro, ou embrulha este erro?", que é exatamente o que errors.Is responde.
+
+## defer, panic e recover: a válvula de escape
+
+panic interrompe a execução normal de um programa de forma abrupta, e é reservado para situações genuinamente excecionais, um índice de array fora dos limites, um ponteiro nil desreferenciado, não para erros esperados do dia a dia, que continuam a usar o padrão de retorno com error.
+
+~~~
+defer func() {
+    if r := recover(); r != nil {
+        fmt.Println("recuperado de:", r)
+    }
+}()
+panic("algo correu muito mal")
+~~~
+
+defer agenda uma função para correr quando a função atual terminar, mesmo que termine por panic. recover() só tem efeito dentro de uma função chamada diretamente por defer, e permite a um programa continuar depois de um panic, em vez de terminar por completo. Na prática, isto usa-se sobretudo em servidores, para uma goroutine com um bug não derrubar o processo inteiro, e raramente para controlo de fluxo normal.
+
+No Bloco 4, vais ver a interface error como o que sempre foi, um caso particular de uma interface qualquer, e vais construir as tuas próprias.`,
     },
     {
       id: "b4",
@@ -1069,6 +1336,82 @@ sort.Interface exige três métodos: Len, Less e Swap. Defini-los sobre um tipo 
 
         9: `Não há código certo ou errado aqui, é uma reflexão. Um fio condutor útil: cria uma interface quando precisas de tratar tipos diferentes da mesma forma, ou quando queres trocar a implementação sem tocar em quem a usa, como fizeste com o Repositorio em memória. Se só existe um tipo concreto e não prevês outro, a interface costuma ser peso a mais.`,
       },
+      livro: `Interfaces em Go definem comportamento, não estrutura: uma lista de methods que um tipo tem de ter, sem nenhuma palavra-chave a ligar explicitamente um tipo a uma interface. Qualquer tipo que tenha os methods certos satisfaz a interface, automaticamente, mesmo que quem o escreveu nunca tenha ouvido falar dela. Este capítulo é sobre o que isso muda na forma como desenhas código.
+
+## Satisfação implícita
+
+~~~
+type Concluivel interface {
+    Concluir()
+}
+~~~
+
+Não escreves "Task implements Concluivel" em lado nenhum. Basta que *Task tenha um method Concluir() com esta assinatura exata, e o compilador considera, sozinho, que *Task satisfaz Concluivel. Isto tem uma consequência importante: podes definir uma interface pequena depois de já teres o tipo concreto escrito, sem alterar esse tipo, e sem que ele sequer saiba que a interface existe.
+
+~~~
+func ConcluirTudo(itens []Concluivel) {
+    for _, item := range itens {
+        item.Concluir()
+    }
+}
+~~~
+
+ConcluirTudo aceita qualquer coisa que saiba Concluir(), sem saber, nem precisar de saber, que tipos concretos são esses. Podes passar-lhe Tasks, Habitos, ou qualquer tipo futuro que ainda nem exista, desde que tenha o method certo.
+
+## Interfaces pequenas: o princípio idiomático
+
+Em Go, é comum interfaces terem um, dois, no máximo três methods. error, com um único method, e fmt.Stringer, também com um único method, são os exemplos canónicos da standard library. A ideia por trás disto: quanto mais pequena a interface, mais fácil é qualquer tipo satisfazê-la, e mais reutilizável se torna o código que a aceita como parâmetro. Uma interface com dez methods só é satisfeita por tipos que implementem os dez, o que estreita drasticamente quem a pode usar.
+
+## A interface vazia e os seus limites
+
+~~~
+func Descrever(v any) {
+    fmt.Printf("%T: %v\n", v, v)
+}
+~~~
+
+any, um pseudónimo de interface{}, não exige nenhum method, por isso qualquer valor a satisfaz. É útil quando uma função genuinamente precisa de aceitar qualquer coisa, como fmt.Println aceita, mas o preço é perderes a verificação de tipos em tempo de compilação: o compilador já não te avisa se passares o tipo errado, porque, do ponto de vista dele, todos os tipos estão certos.
+
+## Type assertions e type switches
+
+Quando tens um valor do tipo any, ou de uma interface, e precisas de saber o tipo concreto por baixo, usas uma type assertion ou um type switch.
+
+~~~
+if t, ok := v.(Task); ok {
+    fmt.Println("é uma Task:", t.Titulo)
+}
+
+switch x := v.(type) {
+case Task:
+    fmt.Println("Task:", x.Titulo)
+case Produto:
+    fmt.Println("Produto:", x.Nome)
+default:
+    fmt.Printf("desconhecido: %T\n", x)
+}
+~~~
+
+A assertion com dois valores segue o mesmo padrão (valor, ok) que já viste com maps no Bloco 2: ok vem false, em vez de panic, quando a conversão falha. O type switch é a forma idiomática de tratares vários tipos possíveis de uma vez, e dentro de cada case, a variável já vem com o tipo concreto desse case, não com any.
+
+## sort.Interface: interfaces como contrato entre a tua struct e a standard library
+
+~~~
+type PorTitulo []Task
+
+func (p PorTitulo) Len() int           { return len(p) }
+func (p PorTitulo) Less(i, j int) bool { return p[i].Titulo < p[j].Titulo }
+func (p PorTitulo) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+sort.Sort(PorTitulo(tarefas))
+~~~
+
+sort.Interface é uma interface com três methods, e implementá-la sobre um tipo teu, PorTitulo, que é só um []Task com nome próprio, é como o pacote sort da standard library conseguia ordenar tipos que nem sabia que existiam, antes de sort.Slice simplificar isto. É um bom exemplo de como uma interface pequena e bem desenhada permite que código escrito por terceiros, anos antes de o teu tipo existir, funcione sobre ele sem alterações.
+
+## Quando compensa criar uma interface
+
+Cria uma interface quando precisas de tratar tipos diferentes da mesma forma, como fizeste com Concluivel, ou quando queres trocar a implementação sem tocar em quem a usa, o que vais fazer a sério com o Repositorio no Bloco 10. Se só existe um tipo concreto, e não prevês um segundo, a interface costuma ser peso a mais: mais uma camada de abstração para ler, sem benefício real ainda.
+
+A partir do Bloco 5, o projeto cresce para várias pastas, e as interfaces que aqui desenhaste começam a viver num pacote, e as suas implementações noutro.`,
     },
     {
       id: "b5",
@@ -1142,6 +1485,57 @@ go build ./...
 
 ./... diz ao comando para procurar em todas as pastas a partir da atual. Se este comando corre sem erros, confirma que os imports entre main, models e services estão todos corretos.`,
       },
+      livro: `Um único ficheiro chega para um exercício, mas não chega para um projeto que vai crescer até uma API completa. Este capítulo cobre a forma como a comunidade Go organiza projetos em pacotes, que é mais uma convenção partilhada do que uma regra imposta pela linguagem.
+
+## Módulos e pacotes
+
+Um módulo é a unidade de versionamento e distribuição de Go, definida pelo ficheiro go.mod na raiz do projeto. Dentro de um módulo, cada pasta com ficheiros .go é um pacote, identificado pela declaração package no topo de cada ficheiro.
+
+~~~
+meu-projeto/
+├── go.mod        // module github.com/tu/meu-projeto
+├── main.go       // package main
+└── models/
+    └── task.go   // package models
+~~~
+
+Todos os ficheiros dentro da mesma pasta têm de declarar o mesmo pacote. main.go e task.go, ambos na raiz, são package main; task.go dentro de models/ é package models, um pacote diferente, mesmo fazendo parte do mesmo módulo.
+
+## Caminhos de import
+
+~~~
+import "github.com/tu/meu-projeto/models"
+
+t := models.Task{Titulo: "Estudar"}
+~~~
+
+O caminho de import é o nome do módulo, definido no go.mod, seguido do caminho da pasta a partir da raiz. Para usares algo de outro pacote, tens de o prefixar com o nome do pacote, models.Task, e esse algo tem de ser exportado, com maiúscula inicial, tal como aprendeste no Bloco 1 para campos de structs. A regra de visibilidade é exatamente a mesma, só que agora aplicada à fronteira entre pacotes, não só dentro de uma struct.
+
+## A convenção models, services, handlers
+
+Não é uma regra da linguagem, é um padrão que a comunidade Go adotou por experiência: models/ guarda os tipos de dados, services/ guarda a lógica de negócio que opera sobre esses tipos, e, mais à frente, handlers/ vai guardar o código que liga tudo isto a pedidos HTTP.
+
+~~~
+package services
+
+import "github.com/tu/meu-projeto/models"
+
+func PercentagemConcluida(tarefas []models.Task) float64 {
+    // ...
+}
+~~~
+
+Esta separação existe para que cada pacote tenha uma única razão para mudar: alterar como calculas uma estatística não deve exigir tocar no struct Task, e vice-versa. É uma versão inicial, ainda simples, da separação em camadas que vais formalizar a sério no Bloco 9, quando lhe juntares handlers HTTP.
+
+## go build ./... como rede de segurança
+
+~~~
+go build ./...
+~~~
+
+./... percorre o pacote atual e todos os que estão dentro dele, recursivamente. Correr isto depois de reorganizares ficheiros é a forma mais rápida de confirmares que todos os imports continuam corretos, sem teres de correr o programa todo.
+
+A partir do Bloco 6, o projeto ganha testes e integração contínua, e a estrutura em pacotes que aqui construíste é o que torna possível testar services/ isoladamente, sem precisares de handlers/ nem de um servidor a correr.`,
     },
     {
       id: "b6",
@@ -1281,6 +1675,85 @@ go test -v ./...
 
         9: `Não há código para este exercício: é uma comparação de fluxo de trabalho. A diferença que vais notar é que, com CI, um erro introduzido por engano aparece assinalado no GitHub minutos depois do push, mesmo que te tenhas esquecido de correr os testes localmente antes de o fazeres.`,
       },
+      livro: `Escrever código funcional é metade do trabalho. A outra metade é ter ferramentas que apanham problemas antes de chegarem a produção, e uma rede de testes que te avisa quando uma alteração parte algo que já funcionava. Este capítulo cobre as ferramentas que a comunidade Go usa no dia a dia, não os conceitos da linguagem em si.
+
+## go vet: o que o compilador deixa passar
+
+~~~
+go vet ./...
+~~~
+
+O compilador Go verifica tipos e sintaxe, mas deixa passar erros que compilam sem problema e ainda assim estão errados, como um Printf com o número errado de argumentos para os verbos de formatação usados. go vet analisa o código à procura destes padrões suspeitos, sem correr o programa.
+
+## Linters: um passo além do vet
+
+golangci-lint junta dezenas de linters diferentes numa única ferramenta, com configuração sensata por omissão.
+
+~~~
+golangci-lint run
+~~~
+
+Um linter vai além de "isto está errado": sinaliza também código que funciona mas foge às convenções da comunidade, variáveis nunca usadas, complexidade excessiva numa função, nomes que não seguem a convenção Go. Não é obrigatório corrigir tudo o que um linter aponta, mas vale a pena perceberes cada aviso antes de o ignorares.
+
+## A filosofia de testing em Go
+
+O pacote testing da standard library é deliberadamente simples: um teste é uma função Test​Algo(t *testing.T), e reportas falhas com t.Error ou t.Fatal.
+
+~~~
+func TestResumo(t *testing.T) {
+    casos := []struct {
+        nome     string
+        tarefa   Task
+        esperado string
+    }{
+        {"pendente", Task{Titulo: "A"}, "[ ] A"},
+        {"concluida", Task{Titulo: "A", Concluida: true}, "[✓] A"},
+    }
+
+    for _, c := range casos {
+        t.Run(c.nome, func(t *testing.T) {
+            if got := c.tarefa.Resumo(); got != c.esperado {
+                t.Errorf("got %q, want %q", got, c.esperado)
+            }
+        })
+    }
+}
+~~~
+
+Este padrão, table-driven test, é o mais comum em Go: uma lista de casos, entrada e resultado esperado, e um único corpo de teste que os percorre a todos. t.Run cria um subteste nomeado por caso, o que ajuda a apontar exatamente qual falhou, sem teres de escrever uma função de teste por cenário.
+
+A diferença entre t.Error e t.Fatal importa: t.Error regista a falha e continua o teste; t.Fatal interrompe-o de imediato. Usa Fatal quando o resto do teste não faz sentido depois de uma falha, por exemplo se uma operação que devia ter sucesso falhou logo no início.
+
+## testify: menos código para a mesma verificação
+
+~~~
+import "github.com/stretchr/testify/assert"
+
+assert.Equal(t, "[✓] A", tarefa.Resumo())
+~~~
+
+assert.Equal compara os dois valores e, se forem diferentes, mostra os dois lados de forma legível, sem precisares de escrever o if e o Errorf manualmente. Não é uma substituição do pacote testing, é uma camada por cima dele.
+
+## CI: automatizar a confiança
+
+~~~
+# .github/workflows/go.yml
+name: Go
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - run: go build ./...
+      - run: go test ./...
+~~~
+
+Este ficheiro corre a cada push: descarrega o código, instala o Go, corre o build e os testes. A diferença prática entre isto e correr os testes manualmente não é só conveniência: é que um erro introduzido por engano aparece assinalado no GitHub minutos depois, mesmo que te tenhas esquecido de correr os testes localmente antes de fazeres o push.
+
+No Bloco 7, o projeto começa a falar JSON, e os testes que aqui aprendeste a escrever vão continuar a valer, agora também para confirmar que o Marshal e o Unmarshal fazem o que esperas.`,
     },
     {
       id: "b7",
@@ -1379,6 +1852,66 @@ err = os.WriteFile("tarefas.json", dados, 0644)
 
 0644 são as permissões do ficheiro criado, no formato Unix habitual: leitura e escrita para o dono, só leitura para os outros.`,
       },
+      livro: `Uma API precisa de converter dados Go para JSON, e JSON de volta para dados Go: é assim que comunica com o mundo exterior, seja um browser, uma aplicação móvel, ou outro serviço. O pacote encoding/json da standard library trata disto sem precisares de nenhuma biblioteca externa.
+
+## Tags de struct: o mapeamento entre Go e JSON
+
+~~~
+type Task struct {
+    ID        int    \`json:"id"\`
+    Titulo    string \`json:"titulo"\`
+    Concluida bool   \`json:"concluida"\`
+}
+~~~
+
+A tag entre crases, depois de cada campo, diz ao pacote encoding/json que nome usar no JSON para esse campo. Sem tags, ele usaria o próprio nome do campo Go, ID, Titulo, Concluida, exatamente como estão escritos, com maiúscula inicial incluída, o que raramente é o formato que queres expor numa API.
+
+## Marshal: de Go para JSON
+
+~~~
+dados, err := json.Marshal(task)
+fmt.Println(string(dados)) // {"id":1,"titulo":"Estudar Go","concluida":false}
+~~~
+
+json.Marshal devolve []byte, não string, por isso precisas da conversão string(dados) para veres texto legível. Funciona sobre qualquer valor, incluindo slices inteiros: um []Task vira um array JSON, sem precisares de percorrer a lista à mão.
+
+Para JSON formatado e mais fácil de ler, existe json.MarshalIndent, que aceita um prefixo de linha e uma string de indentação a repetir por cada nível de aninhamento.
+
+## Unmarshal: o caminho inverso
+
+~~~
+var task Task
+err := json.Unmarshal(dados, &task)
+~~~
+
+Unmarshal precisa de um ponteiro para o destino, &task, porque é ele que escreve os valores lá dentro. Sem o &, estarias a passar uma cópia que se perde assim que a função termina, exatamente o mesmo princípio de pointer receiver que viste no Bloco 1.
+
+## omitempty e os valores zero
+
+~~~
+type Produto struct {
+    Nome     string  \`json:"nome"\`
+    Desconto float64 \`json:"desconto,omitempty"\`
+}
+~~~
+
+Com omitempty, um campo só aparece no JSON de saída se tiver um valor diferente do valor zero do seu tipo: 0 para números, "" para strings, false para bool, nil para ponteiros e slices. É útil para campos opcionais, onde a ausência no JSON tem significado diferente de um valor explicitamente zero.
+
+## Ficheiros como armazenamento temporário
+
+~~~
+dados, _ := os.ReadFile("tarefas.json")
+var tarefas []Task
+json.Unmarshal(dados, &tarefas)
+
+// e o caminho inverso
+dados, _ = json.Marshal(tarefas)
+os.WriteFile("tarefas.json", dados, 0644)
+~~~
+
+Antes de teres uma base de dados a sério, um ficheiro JSON é uma forma simples de persistência: lês tudo para memória ao arrancar, escreves tudo de volta quando algo muda. Não escala, e não aguenta acesso concorrente sem cuidado extra, mas é suficiente para os exercícios até ao Bloco 12, e é exatamente o mesmo padrão que vais usar para gerar relatórios exportáveis nos domínios práticos.
+
+No Bloco 8, este JSON deixa de viver só em ficheiros e passa a ser o corpo de pedidos e respostas HTTP.`,
     },
     {
       id: "b8",
@@ -1497,6 +2030,63 @@ curl -X POST http://localhost:8080/tarefas -d "{\"titulo\":\"Nova\"}"
 
         9: `Não há código novo aqui: é o momento de perceberes o que um router como o chi, que vais usar já no próximo bloco, está de facto a poupar-te. Sem ele, cada rota nova significa mais um if a comparar r.URL.Path à mão.`,
       },
+      livro: `O pacote net/http da standard library já permite construir um servidor web completo, sem nenhuma biblioteca externa. Este capítulo cobre o suficiente de net/http puro para perceberes, no Bloco 9, exatamente o que um router como o chi está a poupar-te.
+
+## O modelo de um servidor HTTP em Go
+
+~~~
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintln(w, "Olá!")
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8080", nil)
+}
+~~~
+
+http.HandleFunc regista uma função para responder a uma rota. http.ListenAndServe arranca o servidor e bloqueia o programa ali, a aceitar pedidos, até o processo terminar. Cada pedido recebido corre numa goroutine própria, gerida automaticamente pelo pacote, o que significa que o teu handler já lida com múltiplos pedidos em simultâneo sem teres de escrever nada de concorrência explicitamente, algo que só vais formalizar a sério no Nível 2.
+
+w, o http.ResponseWriter, é onde escreves a resposta. r, o *http.Request, é o pedido recebido, com o método, o URL, os cabeçalhos e o corpo.
+
+## Ler informação do pedido
+
+~~~
+nome := r.URL.Query().Get("nome")           // query string: ?nome=Ana
+r.Method                                     // "GET", "POST", ...
+json.NewDecoder(r.Body).Decode(&task)        // corpo do pedido
+~~~
+
+r.URL.Query() devolve os parâmetros da query string como um map; Get devolve string vazia se o parâmetro não existir, sem erro. r.Body comporta-se como um leitor de onde só se lê uma vez, e Decode faz o parse diretamente a partir daí, sem precisares de uma variável intermédia.
+
+## Responder com o código de estado certo
+
+~~~
+w.Header().Set("Content-Type", "application/json")
+json.NewEncoder(w).Encode(tarefas)
+
+http.Error(w, "não encontrada", http.StatusNotFound)
+~~~
+
+Os códigos de estado HTTP dividem-se em famílias: 2xx significa sucesso, 4xx significa que o pedido do cliente tem um problema, 5xx significa que o problema é do servidor. Escolher o código certo não é só formalidade: é o que permite a quem consome a tua API reagir programaticamente, sem teres de documentar cada caso à parte.
+
+## Middlewares: envolver um handler com outro
+
+~~~
+func comLog(next http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        inicio := time.Now()
+        next(w, r)
+        fmt.Println(r.URL.Path, time.Since(inicio))
+    }
+}
+
+http.HandleFunc("/ping", comLog(handler))
+~~~
+
+Um middleware é uma função que recebe um handler e devolve outro handler que o envolve. comLog corre código antes e depois de chamar next, o handler original, sem que esse handler precise de saber que está a ser cronometrado. É o mesmo princípio que torna interfaces úteis, uma peça que não sabe nada sobre quem a está a usar por fora, e é exatamente o padrão que o chi formaliza no bloco seguinte, com r.Use.
+
+O objetivo deste bloco não é só construíres um servidor: é perceberes o suficiente de net/http puro para, no Bloco 9, apreciares o que um router como o chi resolve por ti, e não tratares essa biblioteca como magia.`,
     },
     {
       id: "b9",
@@ -1556,6 +2146,61 @@ r.Use regista um middleware que se aplica a todas as rotas definidas depois dele
 
         6: `Sem código para este: escreve as tuas conclusões em comentário ou num ficheiro à parte. A ideia central costuma ser: cada camada só conhece a que está imediatamente a seguir a ela, o que torna possível testar o service sem precisares de um servidor a correr.`,
       },
+      livro: `net/http sozinho fica limitado à medida que uma API cresce: rotas com parâmetros exigem parsing manual do URL, agrupar rotas relacionadas não tem apoio nenhum, middlewares têm de ser aplicados um a um. chi é um router leve que resolve isto sem se tornar um framework pesado.
+
+## chi.NewRouter como substituto direto
+
+~~~
+r := chi.NewRouter()
+r.Get("/ping", handler)
+http.ListenAndServe(":8080", r)
+~~~
+
+chi.NewRouter() devolve algo que também satisfaz http.Handler, a mesma interface que nil satisfazia implicitamente antes. É por isto que passa diretamente para ListenAndServe: chi não substitui net/http, constrói-se por cima dele.
+
+## Rotas com parâmetros
+
+~~~
+r.Get("/tasks/{id}", func(w http.ResponseWriter, r *http.Request) {
+    id := chi.URLParam(r, "id")
+})
+~~~
+
+{id} marca um segmento variável do URL. chi.URLParam lê o valor recebido nesse segmento, sempre como string, mesmo que represente um número, o que significa que continuas a precisar de strconv.Atoi para o converteres, tal como farias sem router nenhum.
+
+## Agrupar rotas relacionadas
+
+~~~
+r.Route("/tasks", func(r chi.Router) {
+    r.Get("/", listarHandler)
+    r.Post("/", criarHandler)
+    r.Get("/{id}", obterHandler)
+})
+~~~
+
+Dentro do Route, as rotas ficam relativas ao prefixo /tasks, o que evita repeti-lo em cada uma, e torna visível, de relance, que grupo de endpoints pertence à mesma entidade.
+
+## Middlewares do próprio chi
+
+~~~
+r.Use(middleware.Logger)
+~~~
+
+r.Use regista um middleware que se aplica a todas as rotas definidas depois dele. middleware.Logger, incluído no pacote chi/middleware, regista cada pedido recebido, exatamente o que construíste à mão no Bloco 8, já pronto a usar.
+
+## Arquitetura em camadas: handler, service, repository
+
+Com um router a tratar do encaminhamento, o próximo passo natural é separar responsabilidades dentro de cada rota:
+
+~~~
+handler   → recebe o pedido HTTP, lê o corpo, escreve a resposta
+service   → aplica a regra de negócio, validações, cálculos
+repository → guarda e procura dados, por agora em memória com um map
+~~~
+
+Cada camada só conhece a camada imediatamente a seguir: o handler chama o service, o service chama o repository, e nenhum sabe dos detalhes internos do outro. É esta separação que torna possível, no Bloco 11, testar o service sem precisares de um servidor HTTP a correr, e é o que vais formalizar de forma muito mais rigorosa no Nível 2, com injeção de dependências a sério.
+
+No Bloco 10 juntas tudo isto num CRUD completo: as quatro operações fundamentais, sobre a estrutura em camadas que aqui desenhaste.`,
     },
     {
       id: "b10",
@@ -1666,6 +2311,44 @@ if task.Titulo == "" {
 
 Esta verificação entra logo a seguir ao Decode, antes de guardares fosse o que fosse. 400 Bad Request é o código correto quando o problema está nos dados que o cliente enviou.`,
       },
+      livro: `Este bloco não introduz conceitos novos, junta os que já tens: router, camadas, JSON, structs. O resultado é uma API real de gestão de tarefas, com as quatro operações que qualquer sistema que guarda dados precisa de suportar.
+
+## As quatro operações e os verbos HTTP certos
+
+~~~
+POST   /tasks       cria
+GET    /tasks       lista
+GET    /tasks/{id}  obtém uma específica
+PUT    /tasks/{id}  atualiza
+DELETE /tasks/{id}  remove
+~~~
+
+Esta correspondência entre operação e verbo HTTP não é arbitrária, é uma convenção que quem consome APIs espera encontrar: POST para criar algo novo, cujo identificador ainda não existe; GET para ler, sem efeitos secundários; PUT para substituir por completo um recurso existente; DELETE para o remover. Seguir a convenção poupa-te de teres de documentar decisões que, de outra forma, cada cliente teria de adivinhar.
+
+## Um endpoint dedicado quando a operação é específica
+
+~~~
+PATCH /tasks/{id}/concluir
+~~~
+
+Nem toda a alteração justifica um PUT completo. Marcar uma tarefa como concluída é uma operação específica, com um significado próprio, e um endpoint dedicado, com PATCH, evita que o cliente tenha de enviar a tarefa inteira só para mudar um campo.
+
+## Idempotência: porque PUT e DELETE se podem repetir sem medo
+
+Uma operação é idempotente quando repeti-la produz o mesmo resultado que executá-la uma única vez. PUT e DELETE são pensados para serem idempotentes: atualizar uma tarefa com os mesmos dados duas vezes deixa-a no mesmo estado; remover uma tarefa que já foi removida não devia causar um erro diferente da primeira remoção. POST, pelo contrário, normalmente não é idempotente: chamá-lo duas vezes cria dois recursos, não um. Esta distinção importa na prática porque um cliente de rede instável pode reenviar um pedido sem saber se o primeiro chegou a ser processado, e só operações idempotentes são seguras de reenviar às cegas.
+
+## Validação à entrada
+
+~~~
+if task.Titulo == "" {
+    http.Error(w, "o título é obrigatório", http.StatusBadRequest)
+    return
+}
+~~~
+
+400 Bad Request é o código certo quando o problema está nos dados que o cliente enviou, distinto de 404, que significa que o recurso pedido não existe, ou de 500, que significa que o problema é do teu lado. Validar cedo, logo a seguir ao Decode e antes de tocares em qualquer estado, evita que dados inválidos cheguem a ser gravados.
+
+No Bloco 11, vais escrever testes para as regras de negócio que aqui implementaste, sem precisares de um servidor a correr para os correr.`,
     },
     {
       id: "b11",
@@ -1756,6 +2439,55 @@ go test -v ./...
 
 Se tudo o que escreveste nos blocos anteriores estiver bem ligado, este comando deve terminar sem nenhum FAIL. É o momento de confirmares o projeto todo de uma vez.`,
       },
+      livro: `Com handler, service e repository separados desde o Bloco 9, a maior parte da lógica de negócio testa-se sem servidor nem base de dados nenhuma. Este bloco é sobre tirar partido dessa separação.
+
+## Testar o service sem servidor
+
+~~~
+func TestCriarTask(t *testing.T) {
+    repo := NewRepositorioMemoria()
+    service := NewTaskService(repo)
+
+    task, err := service.Criar("Estudar Go")
+    if err != nil {
+        t.Fatalf("erro inesperado: %v", err)
+    }
+    if task.Titulo != "Estudar Go" {
+        t.Errorf("titulo = %q, want %q", task.Titulo, "Estudar Go")
+    }
+}
+~~~
+
+O teste chama o service diretamente, com um repository em memória, sem nenhum servidor HTTP a correr. Isto torna o teste rápido, e independente de detalhes que não interessam à regra de negócio em si, como uma porta ocupada ou latência de rede.
+
+## Testar o repository isoladamente
+
+~~~
+func TestRepositorioMemoria(t *testing.T) {
+    repo := NewRepositorioMemoria()
+    repo.Adicionar(Task{ID: 1, Titulo: "A"})
+
+    task, err := repo.BuscarPorID(1)
+    if err != nil {
+        t.Fatalf("erro inesperado: %v", err)
+    }
+    if task.Titulo != "A" {
+        t.Errorf("titulo = %q, want %q", task.Titulo, "A")
+    }
+}
+~~~
+
+Testar cada camada separadamente, e não só o sistema inteiro de ponta a ponta, tem uma vantagem prática: quando um teste falha, o nome da função de teste já te diz aproximadamente onde procurar. Um teste end-to-end que falha só te diz que algo, algures, está errado.
+
+## Uma suite que confia em si própria
+
+~~~
+go test -v ./...
+~~~
+
+Se as camadas anteriores estiverem bem separadas, este comando corre em segundos, não minutos, mesmo com dezenas de testes. É essa velocidade que torna prático correr a suite toda antes de cada commit, em vez de só de vez em quando: um teste que demora minutos a correr acaba por não correr.
+
+No Bloco 12, tudo o que construíste nos blocos anteriores junta-se numa única entrega: a API completa, documentada, e publicada onde outra pessoa a consegue testar.`,
     },
     {
       id: "b12",
@@ -1804,6 +2536,38 @@ curl https://a-tua-api.onrender.com/tasks
 
 Testar a partir de fora da tua máquina confirma que o deploy está mesmo acessível publicamente, e não só a funcionar no teu localhost.`,
       },
+      livro: `Este é o bloco de fechar: não introduz nada de novo na linguagem, pede-te para olhares para tudo o que construíste nos blocos anteriores como um todo coerente, e para o tornares acessível a alguém que não seja tu, na tua máquina.
+
+## Documentar uma API com um README
+
+~~~
+## POST /tasks
+Cria uma nova tarefa.
+
+Request:
+{"titulo": "Estudar Go"}
+
+Response: 201
+{"id": 1, "titulo": "Estudar Go", "concluida": false}
+~~~
+
+Um README curto, com método, rota, e um exemplo de pedido e de resposta para cada endpoint, é muitas vezes a diferença entre alguém conseguir usar a tua API em cinco minutos ou desistir. Não precisa de ferramentas especiais nem de geração automática a partir do código: um ficheiro Markdown simples, escrito à mão, já resolve a maior parte do problema.
+
+## Escolher onde fazer o deploy
+
+Render e Railway são duas plataformas com planos gratuitos suficientes para um projeto deste tamanho. Ambas seguem o mesmo princípio geral: ligas o repositório do GitHub, defines o comando de build e o comando de arranque, e a plataforma trata do resto, incluindo HTTPS e reinícios automáticos se o processo cair.
+
+A diferença prática entre as duas costuma estar em detalhes de configuração e nos limites do plano gratuito, não em capacidades fundamentais. Para um projeto deste tamanho, qualquer uma serve.
+
+## Testar a partir de fora
+
+~~~
+curl https://a-tua-api.onrender.com/tasks
+~~~
+
+Testar a partir de fora da tua máquina, depois do deploy, confirma algo que correr localmente não confirma: que a aplicação está mesmo acessível publicamente, com as variáveis de ambiente certas, sem depender de nada que só existia no teu computador.
+
+Isto fecha o Nível 1. O que vem a seguir, no Nível 2, não é mais do mesmo em maior escala: é um conjunto de problemas que só aparecem quando um sistema tem de aguentar carga real, falhas parciais, e mais do que uma pessoa a mexer nele ao mesmo tempo, a começar por context.Context e por concorrência com goroutines.`,
     },
   ],
 };
@@ -1999,6 +2763,52 @@ os.WriteFile("relatorio.json", dados, 0644)
 
 O mesmo padrão do Bloco 7, aplicado ao slice de passagens em vez de tarefas.`,
       },
+      livro: `Este domínio pega no mesmo problema que, em Java, se resolveria com herança e classes abstratas, uma hierarquia Passagem → Internacional → Doméstica, e resolve-o com as ferramentas que já tens: um struct base embutido, e uma interface para a única coisa que realmente varia entre os tipos, o cálculo do valor final.
+
+## Porque não precisas de herança
+
+Em Java, PassagemInternacional herdaria de Passagem, e sobrescreveria um method para calcular o valor. Em Go, não há herança de tipos, e a solução idiomática é composição: PassagemInternacional embute Passagem, ganha os seus campos por promoção, exatamente como ClienteVIP embutia Cliente no Bloco 1, e implementa o seu próprio ValorFinal().
+
+~~~
+type PassagemInternacional struct {
+    Passagem
+    TemVisto      bool
+    Directo       bool
+    RefeicaoExtra bool
+    HorasTransito int
+}
+
+func (p PassagemInternacional) ValorFinal() float64 {
+    // as regras específicas deste tipo
+}
+~~~
+
+## A interface como o único ponto de variação
+
+~~~
+type CalculadoraValor interface {
+    ValorFinal() float64
+}
+~~~
+
+Esta interface tem um único method, o suficiente para capturar a única coisa que precisa de variar: como se calcula o preço final. Tudo o resto, os campos partilhados, a forma como se lê um ficheiro, como se soma um total, é código comum que não precisa de saber qual dos dois tipos concretos está a tratar.
+
+## Polimorfismo: o mesmo slice, dois tipos diferentes
+
+~~~
+var passagens []CalculadoraValor
+passagens = append(passagens, PassagemInternacional{})
+passagens = append(passagens, PassagemDomestica{})
+
+total := 0.0
+for _, p := range passagens {
+    total += p.ValorFinal()
+}
+~~~
+
+Este é o momento central do domínio: o mesmo slice guarda os dois tipos concretos lado a lado, porque ambos satisfazem CalculadoraValor. A função que soma o total nunca precisa de saber qual é qual, chama ValorFinal() e confia que cada tipo sabe responder por si. É exatamente o mesmo princípio que ConcluirTudo aplicava a Concluivel no Bloco 4, agora aplicado a um domínio de negócio a sério.
+
+Quando precisas mesmo de distinguir os tipos, para contar quantos são de cada, usas type assertion ou type switch, as mesmas ferramentas do Bloco 4, nunca o contrário: a regra é desenhar para o comportamento comum primeiro, e só recorrer ao tipo concreto quando for genuinamente necessário.`,
     },
     {
       id: "d2",
@@ -2096,6 +2906,57 @@ O mesmo padrão (valor, ok) que já usaste no Bloco 2, agora sobre um map cujo v
 
         7: `Reaproveita a estrutura de handlers ou de menu que já construíste no Domínio 1: os mesmos padrões de listar, calcular total e cancelar por código aplicam-se aqui, só a mudar o domínio de passagens para pedidos.`,
       },
+      livro: `O domínio da Movitel repete a estrutura do Domínio 1, com um propósito diferente: confirmar que interiorizaste o padrão, e não que decoraste a solução do primeiro exemplo. Um struct base, Pedido, e três variações que calculam ValorAPagar() de forma diferente cada uma.
+
+## O mesmo padrão, um domínio diferente
+
+~~~
+type CalculadoraPedido interface {
+    ValorAPagar() float64
+}
+
+type PedidoCorporativo struct {
+    Pedido
+    Quantidade int
+}
+
+type PedidoIndividual struct {
+    Pedido
+    TipoCompra string
+}
+
+type PedidoColaborador struct {
+    Pedido
+    NumDeducoes int
+}
+~~~
+
+Cada um destes três tipos embute Pedido, e implementa ValorAPagar() com uma regra própria: o corporativo multiplica pela quantidade, o individual aplica um desconto condicional, o colaborador divide pelo número de deduções. Nenhum dos três precisa de saber que os outros dois existem.
+
+## Uma decisão de desenho real: onde vive a regra do IVA
+
+Os três tipos aplicam a mesma taxa de IVA por cima do valor específico de cada um. Isto levanta uma pergunta de desenho genuína: essa regra fica dentro de cada method ValorAPagar(), repetida três vezes, ou numa função auxiliar partilhada?
+
+~~~
+func comIVA(valor float64) float64 {
+    return valor * 1.16
+}
+~~~
+
+Não há uma resposta certa universal, mas há um critério útil: se a regra do IVA alguma vez mudar, uma função partilhada muda-a num único sítio; três cópias da mesma multiplicação exigem lembrares-te de alterar as três. Repetição pequena e óbvia, como esta, é normalmente um sinal de que vale a pena extrair uma função auxiliar, mesmo que cada cópia individual pareça trivial demais para justificar a abstração.
+
+## BuscarPorID sobre uma interface
+
+~~~
+pedidos := make(map[int]CalculadoraPedido)
+
+func BuscarPorID(codigo int, m map[int]CalculadoraPedido) (CalculadoraPedido, bool) {
+    p, ok := m[codigo]
+    return p, ok
+}
+~~~
+
+O map guarda a interface, não um tipo concreto, o que significa que o mesmo map aceita pedidos corporativos, individuais e de colaborador, todos misturados, tal como o slice de passagens no Domínio 1. Este é o mesmo padrão (valor, ok) do Bloco 2, agora sobre uma coleção de valores polimórficos em vez de um tipo único.`,
     },
     {
       id: "d3",
@@ -2201,6 +3062,57 @@ linha5 := matriz[4][:]
 
 matriz[2][:] transforma a linha de índice 2 do array, ou seja, a 3ª linha, num slice próprio, que passas a poder tratar como qualquer outro slice.`,
       },
+      livro: `Este domínio é deliberadamente mais simples que os outros três: sem hierarquia de tipos, sem interface nenhuma. O objetivo é isolares a prática de slices e leitura de ficheiros do peso extra de desenhar uma hierarquia ao mesmo tempo.
+
+## Um único tipo, sem composição
+
+~~~
+type Participante struct {
+    Nome       string
+    Rounds     int
+    TempoMedio float64
+    Resultado  string
+}
+~~~
+
+Não há aqui nada equivalente a PassagemInternacional ou PedidoCorporativo. Todas as funções deste domínio operam sobre []Participante diretamente, o que te deixa focares nos próprios algoritmos: contar, filtrar, encontrar um mínimo, sem a camada extra de decidir que tipo concreto cada elemento é.
+
+## Encontrar um mínimo com uma flag de estado
+
+~~~
+func MenorTempoEntreVencedores(participantes []Participante) (Participante, error) {
+    var melhor Participante
+    encontrado := false
+
+    for _, p := range participantes {
+        if p.Resultado != "ganhou" {
+            continue
+        }
+        if !encontrado || p.TempoMedio < melhor.TempoMedio {
+            melhor = p
+            encontrado = true
+        }
+    }
+
+    if !encontrado {
+        return Participante{}, errors.New("nenhum vencedor encontrado")
+    }
+    return melhor, nil
+}
+~~~
+
+Este padrão, uma flag booleana a acompanhar a procura de um mínimo ou máximo, resolve um problema real: sem ela, terias de comparar contra algum valor inicial, e não há um TempoMedio inicial que sirva sempre, zero seria um vencedor artificial melhor que qualquer tempo real. A flag torna explícito "ainda não vi nenhum candidato válido", em vez de fingires um candidato que não existe.
+
+## O bónus: fatiar um array multidimensional
+
+~~~
+var matriz [5][10]float64
+linha3 := matriz[2][:]
+~~~
+
+matriz[2][:] transforma a linha de índice 2 do array, a terceira linha, num slice próprio. Isto liga-se diretamente ao que aprendeste no Bloco 2 sobre slices serem uma vista sobre um array: aqui, a vista é sobre uma única linha de um array bidimensional, e continua a partilhar a memória desse array, não uma cópia.
+
+Este domínio encaixa a seguir ao Bloco 2, e antecede o Bloco 3: o exercício de erro, "nenhum vencedor encontrado", é a tua primeira oportunidade de aplicar o padrão de retorno com error fora do contexto controlado dos exercícios do próprio Bloco 3.`,
     },
     {
       id: "d4",
@@ -2321,6 +3233,64 @@ func BubbleSort(diferenca []int) {
 
 Cada passagem pelo slice compara vizinhos e troca-os se estiverem na ordem errada, empurrando gradualmente o maior valor para o fim. n-1-i reduz o alcance a cada passagem, porque os últimos i elementos já ficaram ordenados nas voltas anteriores.`,
       },
+      livro: `Dois problemas independentes debaixo do mesmo domínio: faturação de energia e água, e classificação de um campeonato de futebol. Nenhum se apoia no outro, o valor de praticares os dois lado a lado é treinares não misturares lógicas diferentes no mesmo código.
+
+## Faturação: regras aplicadas em sequência
+
+~~~
+func ValorAPagar(c Cliente) float64 {
+    valor := float64(c.KiloJoules)*2 + float64(c.Litros)*3
+    consumo := c.KiloJoules + c.Litros
+
+    if consumo > 100 {
+        valor *= 0.9
+    }
+
+    return valor * 1.16
+}
+~~~
+
+A ordem importa aqui: primeiro calculas o valor base a partir do consumo, depois aplicas o desconto por volume se for o caso, e só no fim acrescentas o IVA, sobre o que sobrou depois do desconto, não sobre o valor base original. Inverter a ordem destas operações mudaria o resultado final, mesmo que cada regra individual estivesse correta.
+
+## BubbleSort: o algoritmo antes da biblioteca
+
+O enunciado original pede para implementares BubbleSort à mão, sem sort.Slice, que já usaste no Bloco 2.
+
+~~~
+func BubbleSort(diferenca []int) {
+    n := len(diferenca)
+    for i := 0; i < n-1; i++ {
+        for j := 0; j < n-1-i; j++ {
+            if diferenca[j] > diferenca[j+1] {
+                diferenca[j], diferenca[j+1] = diferenca[j+1], diferenca[j]
+            }
+        }
+    }
+}
+~~~
+
+Cada passagem pelo slice compara vizinhos e troca-os se estiverem na ordem errada, o que empurra gradualmente o maior valor não ordenado para o fim. n-1-i reduz o alcance da comparação a cada passagem, porque os últimos i elementos já ficaram corretamente ordenados nas voltas anteriores, e não há razão para os voltares a comparar.
+
+Não é o algoritmo de ordenação mais eficiente, é O(n²), e é exatamente por isso que sort.Slice existe e deves usá-lo em código real. O valor de o escreveres à mão uma vez é perceberes o que uma função de biblioteca está de facto a fazer por ti, antes de dependeres dela sem pensar.
+
+## Duas variáveis nomeadas, um único return
+
+~~~
+func ContarPorTipo(clientes []Cliente) (empresas, particulares int) {
+    for _, c := range clientes {
+        if c.Tipo == "E" {
+            empresas++
+        } else {
+            particulares++
+        }
+    }
+    return
+}
+~~~
+
+O mesmo padrão de named return values que viste pela primeira vez no Bloco 0, aqui aplicado a um caso real: contar por categoria é exatamente o tipo de função pequena onde nomear os retornos torna a assinatura mais legível do que (int, int) sozinho deixaria.
+
+Este é o último domínio prático do Nível 1. Os quatro, juntos, foram a tua prática de composição e polimorfismo em situações que se pareciam com problemas reais, não só com exercícios isolados; o Nível 2 vai pedir-te o mesmo tipo de desenho, mas agora com bases de dados, filas de mensagens e HTTP a sério a complicar cada decisão.`,
     },
   ],
 };
