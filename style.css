@@ -842,6 +842,59 @@ code {
 }
 .exercicio-recursos a:hover { border-color: var(--brand-line); color: var(--brand); }
 
+.exercicio-hint-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-shrink: 0;
+  align-self: flex-start;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  font-size: var(--fs-2xs);
+  padding: var(--s1) var(--s2);
+  min-height: 30px;
+  border-radius: var(--r-sm);
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.exercicio-hint-btn:hover { color: var(--aviso); background: var(--aviso-soft); border-color: var(--aviso-borda); }
+.exercicio.hint-open .exercicio-hint-btn { color: var(--aviso); background: var(--aviso-soft); border-color: var(--aviso-borda); }
+
+.exercicio-dica {
+  display: none;
+  padding: var(--s4) var(--s4) var(--s4) 60px;
+  border-top: 1px solid var(--border);
+  background: var(--aviso-soft);
+}
+.exercicio.hint-open .exercicio-dica { display: block; }
+.exercicio-dica p {
+  margin: 0 0 var(--s3);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  color: var(--text);
+  max-width: 62ch;
+}
+.exercicio-dica p:last-child { margin-bottom: 0; }
+.dica-codigo {
+  margin: 0 0 var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+  max-width: 62ch;
+}
+.dica-codigo code {
+  background: none;
+  padding: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
+}
+.dica-codigo:last-child { margin-bottom: 0; }
+
 /* ============================ Visão geral ============================ */
 
 .dashboard-stats {
@@ -1104,9 +1157,9 @@ code {
   .bloco-grid { grid-template-columns: 1fr; }
 
   .exercicio-row { padding: var(--s3); gap: var(--s2); }
-  .exercicio-res-btn span { display: none; }
-  .exercicio-res-btn { padding: var(--s2); min-width: 34px; justify-content: center; }
-  .exercicio-recursos { padding-left: var(--s4); padding-right: var(--s4); }
+  .exercicio-res-btn span, .exercicio-hint-btn span { display: none; }
+  .exercicio-res-btn, .exercicio-hint-btn { padding: var(--s2); min-width: 34px; justify-content: center; }
+  .exercicio-recursos, .exercicio-dica { padding-left: var(--s4); padding-right: var(--s4); }
   .guia, .nivel-aviso { padding: var(--s4); }
   .locked-panel { padding: var(--s8) var(--s4); }
   .locked-panel-actions { flex-direction: column; width: 100%; }

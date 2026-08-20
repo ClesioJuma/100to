@@ -41,6 +41,192 @@ const TRILHA_PRINCIPAL = {
         "Escreve a função Dobrar(n *int), que recebe um ponteiro e duplica o valor original, e compara com uma versão DobrarValor(n int) int, que devolve o dobro sem alterar o original. É o mesmo princípio que vais aplicar a Concluir() no Bloco 1.",
         "Corre gofmt -l . no teu projeto para listares os ficheiros mal formatados, e depois gofmt -w . para os corrigires automaticamente. Ao contrário da maioria das linguagens, Go tem uma única formatação oficial, e vale a pena adotares isto desde já.",
       ],
+      dicas: {
+        0: `O go.mod é o ficheiro que identifica o teu projeto como um módulo Go e regista as suas dependências. Corre estes dois comandos na pasta do projeto:
+
+~~~
+go version
+go mod init nome-do-teu-modulo
+~~~
+
+O nome do módulo pode ser qualquer texto, mas é comum usar algo como github.com/o-teu-utilizador/nome-do-projeto, mesmo que nunca chegues a publicar o código.`,
+
+        1: `package main marca este ficheiro como o ponto de entrada de um programa executável, e func main() é a função que corre primeiro.
+
+~~~
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello, World")
+}
+~~~
+
+go run ficheiro.go compila para um binário temporário, corre-o, e apaga-o a seguir, tudo num só comando. go build ficheiro.go gera um binário que fica no disco, e que depois corres à parte com ./ficheiro.`,
+
+        2: `~~~
+var x int = 5   // forma completa, com o tipo explícito
+var y = 5       // tipo inferido a partir do valor
+z := 5          // short declaration, só dentro de funções
+~~~
+
+Usa var quando quiseres deixar o tipo explícito, ou quando precisares da variável antes de lhe dares um valor, porque nesse caso ela fica com o valor zero do tipo. Usa := no dia a dia dentro de funções: é a forma mais comum em código Go idiomático.`,
+
+        3: `~~~
+var i int = 10
+var f float64 = 3.14
+var s string = "texto"
+var b bool = true
+var r rune = 'A'
+var by byte = 255
+
+fmt.Printf("%T %T %T %T %T %T\n", i, f, s, b, r, by)
+~~~
+
+rune é só um nome alternativo para int32, e representa um carácter Unicode. byte é um nome alternativo para uint8.`,
+
+        4: `~~~
+const (
+	Segunda = iota // 0
+	Terca           // 1
+	Quarta          // 2
+	Quinta          // 3
+	Sexta           // 4
+)
+~~~
+
+iota começa em 0 dentro de um bloco const e soma 1 a cada linha nova, mesmo que não o escrevas outra vez.`,
+
+        5: `~~~
+fmt.Println(7 / 2)     // 3, divisão inteira: a parte decimal é descartada
+fmt.Println(7.0 / 2)   // 3.5, porque pelo menos um dos operandos é float64
+fmt.Println(7 % 2)     // 1, o resto da divisão inteira
+~~~
+
+Quando os dois operandos de / são inteiros, Go faz divisão inteira e descarta a parte decimal. Para obteres um resultado com casas decimais, pelo menos um dos dois números tem de ser float64.`,
+
+        6: `~~~
+if n := calcular(); n > 0 {
+	fmt.Println("positivo:", n)
+}
+
+if err := fazerAlgo(); err != nil {
+	fmt.Println("erro:", err)
+}
+~~~
+
+A variável declarada antes do ; só existe dentro do if, e do else, se houver. É por isso que este padrão é tão usado com erros: evita que err fique visível fora do bloco onde é tratado.`,
+
+        7: `~~~
+switch {
+case idade < 12:
+	fmt.Println("criança")
+case idade < 18:
+	fmt.Println("adolescente")
+default:
+	fmt.Println("adulto")
+}
+
+switch dia {
+case "sábado", "domingo":
+	fmt.Println("fim de semana")
+default:
+	fmt.Println("dia útil")
+}
+~~~
+
+O switch sem expressão testa uma condição booleana em cada case, tal como uma cadeia de if/else if. O switch com valor compara esse valor com cada case, e um case pode juntar várias opções separadas por vírgula.`,
+
+        8: `~~~
+for i := 0; i < 10; i++ {
+	fmt.Println(i)
+}
+
+n := 10
+for n > 0 {
+	n--
+}
+
+for {
+	if condicaoDeParagem() {
+		break
+	}
+}
+~~~
+
+O segundo formato, só com a condição, equivale a um while. O terceiro, sem nada, corre para sempre até encontrar um break.`,
+
+        9: `~~~
+func dividir(a, b int) (int, int) {
+	return a / b, a % b
+}
+
+q, r := dividir(17, 5)
+~~~
+
+Uma função em Go pode devolver mais do que um valor, separados por vírgula tanto na assinatura como no return.`,
+
+        10: `~~~
+func dividir(a, b int) (q, r int) {
+	q = a / b
+	r = a % b
+	return
+}
+~~~
+
+q e r já existem, com o valor zero, assim que a função começa a correr. O return sozinho devolve o que estiver guardado neles nesse momento.`,
+
+        11: `~~~
+func soma(numeros ...int) int {
+	total := 0
+	for _, n := range numeros {
+		total += n
+	}
+	return total
+}
+
+soma(1, 2, 3) // 6
+soma()        // 0
+~~~
+
+Dentro da função, numeros comporta-se como um []int normal. Podes chamar a função com quantos argumentos quiseres, incluindo zero.`,
+
+        12: `~~~
+x := 5
+fmt.Println(&x) // endereço de memória de x
+
+p := &x    // p é um ponteiro para x
+*p = 10    // altera o valor de x através do ponteiro
+
+fmt.Println(x) // 10
+~~~
+
+& obtém o endereço de uma variável. * usado num ponteiro acede, ou altera, o valor guardado nesse endereço, o que se chama dereferenciar.`,
+
+        13: `~~~
+func Dobrar(n *int) {
+	*n = *n * 2
+}
+
+func DobrarValor(n int) int {
+	return n * 2
+}
+
+x := 5
+Dobrar(&x)           // x passa a ser 10
+y := DobrarValor(x)  // x continua 10, y é 20
+~~~
+
+Dobrar recebe o endereço de x e altera o valor original através do ponteiro. DobrarValor recebe uma cópia de x, por isso o x original nunca muda, só o valor devolvido.`,
+
+        14: `~~~
+gofmt -l .
+gofmt -w .
+~~~
+
+O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não segue a convenção oficial. O segundo aplica essa formatação diretamente. A maioria dos editores, como o VS Code com a extensão de Go, faz isto sozinho sempre que gravas o ficheiro.`,
+      },
     },
     {
       id: "b1",

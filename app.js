@@ -26,6 +26,9 @@ const ICON_LOCK =
 const ICON_CHECKLIST =
   '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 7h8"/><path d="M13 17h8"/></svg>';
 
+const ICON_HINT =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .8 1.7V16h6.4v-.8c0-.7.3-1.2.8-1.7A6 6 0 0 0 12 3Z"/></svg>';
+
 const THEME_KEY = "100to:theme";
 const ENTRY_KEY = "100to:entrada";
 
@@ -128,6 +131,27 @@ function formatEnunciado(texto) {
   }
   out += escapeHtml(texto.slice(last));
   return out;
+}
+
+/* Dicas: explicação com exemplo, escrita à mão por exercício, para quem
+   quer resolver sem sair da app. Os recursos externos continuam a existir
+   ao lado, mas deixam de ser o único caminho. O texto usa ~~~ para marcar
+   um bloco de código no meio da prosa, ao estilo Markdown mínimo (evita
+   crases, para os textos poderem ser escritos como template literals). */
+function renderDicaHTML(texto) {
+  const partes = texto.split(/~~~([\s\S]*?)~~~/);
+  return partes
+    .map((parte, i) => {
+      if (i % 2 === 1) {
+        return `<pre class="dica-codigo"><code>${escapeHtml(parte.trim())}</code></pre>`;
+      }
+      return parte
+        .split(/\n{2,}/)
+        .filter((p) => p.trim())
+        .map((p) => `<p>${formatEnunciado(p.trim())}</p>`)
+        .join("");
+    })
+    .join("");
 }
 
 function systemPrefersLight() {
@@ -712,6 +736,26 @@ function renderBlocoContent(nivel, trilha, bloco) {
     };
     row.onclick = () => toggleDone(trilha.id, bloco.id, idx);
 
+    const dicaTexto = bloco.dicas && bloco.dicas[idx];
+    const panels = [];
+
+    if (dicaTexto) {
+      const hintBtn = document.createElement("button");
+      hintBtn.className = "exercicio-hint-btn";
+      hintBtn.title = "Ver explicação com exemplo";
+      hintBtn.innerHTML = ICON_HINT + "<span>Dica</span>";
+      hintBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        item.classList.toggle("hint-open");
+      };
+      row.appendChild(hintBtn);
+
+      const hintPanel = document.createElement("div");
+      hintPanel.className = "exercicio-dica";
+      hintPanel.innerHTML = renderDicaHTML(dicaTexto);
+      panels.push(hintPanel);
+    }
+
     if (recursosLinks.length) {
       const resBtn = document.createElement("button");
       resBtn.className = "exercicio-res-btn";
@@ -734,11 +778,11 @@ function renderBlocoContent(nivel, trilha, bloco) {
         a.onclick = (ev) => ev.stopPropagation();
         panel.appendChild(a);
       }
-      item.appendChild(row);
-      item.appendChild(panel);
-    } else {
-      item.appendChild(row);
+      panels.push(panel);
     }
+
+    item.appendChild(row);
+    panels.forEach((p) => item.appendChild(p));
 
     listEl.appendChild(item);
   });
