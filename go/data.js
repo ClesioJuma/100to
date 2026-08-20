@@ -4,7 +4,7 @@ const APP = {
   nome: "Go",
   tagline: "Do primeiro struct ao sistema distribuído",
   icone: "../golang.png",
-  outro: { nome: "System Design", href: "../system-design/" },
+  outro: { nome: "Design", href: "../design/" },
 };
 
 // Dados das duas trilhas Go — gerados a partir dos ficheiros markdown originais.

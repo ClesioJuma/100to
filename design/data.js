@@ -1,13 +1,13 @@
-// 100toSystemDesign — eixo System Design. Configuração da app e conteúdo.
+// 100toDesign — eixo Design. Configuração da app e conteúdo.
 const APP = {
   id: "sd",
-  nome: "System Design",
+  nome: "Design",
   tagline: "De um pedido HTTP à escala global",
-  icone: "../icon-system-design.svg",
+  icone: "../icon-design.svg",
   outro: { nome: "Go", href: "../go/" },
 };
 
-// Eixo System Design — independente do eixo Go, com a mesma estrutura de níveis.
+// Eixo Design — independente do eixo Go, com a mesma estrutura de níveis.
 
 const REC_PRIMER = { label: "System Design Primer", url: "https://github.com/donnemartin/system-design-primer" };
 const REC_BYTEBYTEGO = { label: "ByteByteGo — arquivo do blog", url: "https://blog.bytebytego.com/archive" };

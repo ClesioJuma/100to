@@ -182,7 +182,7 @@ function saveProgress() {
 }
 
 // O nível de entrada é guardado por eixo, na mesma chave: alguém pode ser
-// iniciante em Go e já ter bagagem de System Design, ou o contrário.
+// iniciante em Go e já ter bagagem de desenho de sistemas, ou o contrário.
 function loadEntradas() {
   let guardado = {};
   try {
