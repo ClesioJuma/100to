@@ -252,6 +252,133 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Cria o struct ClienteVIP embutindo Cliente e adicionando o campo Desconto float64. Confirma que consegues aceder a vip.Nome diretamente, sem escreveres vip.Cliente.Nome, porque Go promove os campos do struct embutido.",
         "Implementa o método (t Task) String() string, que satisfaz a interface fmt.Stringer. Depois chama fmt.Println(t1) diretamente e repara que Go usa esse método automaticamente.",
       ],
+      dicas: {
+        0: `~~~
+type Task struct {
+    ID        int
+    Titulo    string
+    Concluida bool
+}
+~~~
+
+Os campos ficam com maiúscula inicial para serem exportados, ou seja, visíveis fora do pacote onde o struct está definido. Um campo em minúscula só seria visível dentro do próprio pacote.`,
+
+        1: `~~~
+func (t Task) Resumo() string {
+    if t.Concluida {
+        return "[✓] " + t.Titulo
+    }
+    return "[ ] " + t.Titulo
+}
+~~~
+
+t é o receiver: liga este método ao tipo Task. Como recebes t por valor, dentro do método tens uma cópia da Task original, o que é suficiente aqui porque só estás a ler os campos, nunca a alterá-los.`,
+
+        2: `~~~
+func (t *Task) Concluir() {
+    t.Concluida = true
+}
+
+func (t Task) ConcluirValor() {
+    t.Concluida = true // só altera a cópia local
+}
+
+tarefa := Task{Titulo: "Estudar Go"}
+tarefa.Concluir()
+fmt.Println(tarefa.Concluida) // true
+
+tarefa2 := Task{Titulo: "Ler livro"}
+tarefa2.ConcluirValor()
+fmt.Println(tarefa2.Concluida) // false, a chamada não teve efeito
+~~~
+
+Com pointer receiver, o método recebe o endereço da Task original e altera-a diretamente. Com value receiver, recebe uma cópia, e qualquer alteração feita dentro do método desaparece assim que ele termina. Regra prática: se o método precisa de alterar o struct, usa pointer receiver.`,
+
+        3: `~~~
+type Produto struct {
+    Nome  string
+    Preco float64
+    Stock int
+}
+~~~`,
+
+        4: `~~~
+func (p Produto) EmStock() bool {
+    return p.Stock > 0
+}
+~~~`,
+
+        5: `~~~
+func (p *Produto) Vender(qtd int) error {
+    if qtd > p.Stock {
+        return fmt.Errorf("stock insuficiente: pedido %d, disponível %d", qtd, p.Stock)
+    }
+    p.Stock -= qtd
+    return nil
+}
+~~~
+
+Vender precisa de pointer receiver porque altera p.Stock. fmt.Errorf constrói uma mensagem de erro formatada, tal como Sprintf, mas devolve um valor do tipo error em vez de string.`,
+
+        6: `~~~
+type Retangulo struct {
+    Largura, Altura float64
+}
+
+func (r Retangulo) Area() float64 {
+    return r.Largura * r.Altura
+}
+
+type Circulo struct {
+    Raio float64
+}
+
+func (c Circulo) Area() float64 {
+    return math.Pi * c.Raio * c.Raio
+}
+~~~
+
+Podes declarar dois campos do mesmo tipo separados por vírgula, como em Largura, Altura float64. math.Pi vem do pacote math da standard library.`,
+
+        7: `~~~
+type Endereco struct {
+    Cidade, Pais string
+}
+
+type Cliente struct {
+    Nome     string
+    Endereco Endereco
+}
+
+c := Cliente{Nome: "Ana", Endereco: Endereco{Cidade: "Maputo", Pais: "Moçambique"}}
+fmt.Println(c.Endereco.Cidade)
+~~~
+
+Um struct pode ter outro struct como tipo de um dos seus campos. Para lá chegares, encadeias os nomes dos campos: c.Endereco.Cidade.`,
+
+        8: `~~~
+type ClienteVIP struct {
+    Cliente
+    Desconto float64
+}
+
+vip := ClienteVIP{Cliente: Cliente{Nome: "Ana"}, Desconto: 0.1}
+fmt.Println(vip.Nome) // funciona, mesmo sem escrever vip.Cliente.Nome
+~~~
+
+Quando embutes Cliente sem lhe dares um nome de campo, os seus campos ficam promovidos: acedes a vip.Nome diretamente, como se pertencesse ao próprio ClienteVIP. É diferente do exercício anterior, onde Endereco tinha um nome de campo próprio e por isso precisavas do caminho completo.`,
+
+        9: `~~~
+func (t Task) String() string {
+    return t.Resumo()
+}
+
+t1 := Task{Titulo: "Estudar Go", Concluida: true}
+fmt.Println(t1) // chama String() automaticamente, imprime "[✓] Estudar Go"
+~~~
+
+fmt.Stringer é uma interface com um único método, String() string. Qualquer tipo que a implemente passa a controlar a sua própria representação em texto, e o pacote fmt usa-a sempre que tenta imprimir um valor desse tipo.`,
+      },
     },
     {
       id: "b2",
@@ -283,6 +410,185 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Implementa Copiar(tarefas []Task) []Task usando copy(), e prova que alterar a cópia não afeta o slice original.",
         "Implementa Achatar(matriz [][]int) []int, que junta uma matriz num único slice plano.",
       ],
+      dicas: {
+        0: `~~~
+tarefas := []Task{
+    {ID: 1, Titulo: "Estudar Go"},
+    {ID: 2, Titulo: "Fazer exercício"},
+    {ID: 3, Titulo: "Ler um livro"},
+    {ID: 4, Titulo: "Descansar"},
+}
+
+for _, t := range tarefas {
+    fmt.Println(t.Resumo())
+}
+~~~
+
+range devolve dois valores em cada volta: o índice e uma cópia do elemento. Usa _ para ignorares o índice quando não precisares dele.`,
+
+        1: `~~~
+func TarefasPendentes(tarefas []Task) []Task {
+    var pendentes []Task
+    for _, t := range tarefas {
+        if !t.Concluida {
+            pendentes = append(pendentes, t)
+        }
+    }
+    return pendentes
+}
+~~~
+
+var pendentes []Task cria um slice vazio. append acrescenta um elemento e devolve o slice atualizado, por isso é preciso voltar a atribuí-lo: pendentes = append(pendentes, t).`,
+
+        2: `~~~
+func TarefasConcluidas(tarefas []Task) []Task {
+    var concluidas []Task
+    for _, t := range tarefas {
+        if t.Concluida {
+            concluidas = append(concluidas, t)
+        }
+    }
+    return concluidas
+}
+~~~
+
+O mesmo padrão do exercício anterior, só a trocar a condição.`,
+
+        3: `~~~
+func ContarConcluidas(tarefas []Task) int {
+    total := 0
+    for _, t := range tarefas {
+        if t.Concluida {
+            total++
+        }
+    }
+    return total
+}
+~~~
+
+Não precisas de guardar as tarefas nem de saber quais são, só de as contar. Por isso não há slice novo, só um inteiro que vai somando.`,
+
+        4: `~~~
+func TituloMaisLongo(tarefas []Task) string {
+    maior := ""
+    for _, t := range tarefas {
+        if len(t.Titulo) > len(maior) {
+            maior = t.Titulo
+        }
+    }
+    return maior
+}
+~~~
+
+len() devolve o número de bytes de uma string. Para texto só com carateres ASCII, isso coincide com o número de carateres.`,
+
+        5: `~~~
+sort.Slice(tarefas, func(i, j int) bool {
+    return tarefas[i].Titulo < tarefas[j].Titulo
+})
+~~~
+
+sort.Slice recebe o slice e uma função que compara dois elementos pelos seus índices. Devolve true quando o elemento i deve ficar antes do elemento j.`,
+
+        6: `~~~
+sort.Slice(tarefas, func(i, j int) bool {
+    return !tarefas[i].Concluida && tarefas[j].Concluida
+})
+~~~
+
+A função de comparação devolve true quando i, pendente, deve vir antes de j, concluída. Isto ordena as pendentes primeiro.`,
+
+        7: `~~~
+porID := make(map[int]Task)
+for _, t := range tarefas {
+    porID[t.ID] = t
+}
+~~~
+
+make(map[int]Task) cria um map vazio, pronto a receber entradas. Sem o make, um map declarado com var fica nil e não podes escrever nele, apenas ler.`,
+
+        8: `~~~
+func BuscarPorID(id int, m map[int]Task) (Task, bool) {
+    t, ok := m[id]
+    return t, ok
+}
+~~~
+
+Ler um map devolve dois valores: o valor guardado, ou o valor zero se a chave não existir, e um booleano que confirma se a chave existia. É o padrão idiomático para procuras que podem falhar sem ser propriamente um erro.`,
+
+        9: `~~~
+func RemoverPorID(id int, m map[int]Task) {
+    delete(m, id)
+}
+~~~
+
+delete() não faz nada, sem gerar erro, se a chave não existir. Como os maps são passados por referência, alterar m dentro da função altera o map original.`,
+
+        10: `~~~
+var arr [5]int         // array: tamanho 5, fixo para sempre
+arr[0] = 10
+
+var s []int             // slice: tamanho dinâmico
+s = append(s, 10, 20)
+
+fmt.Println(len(arr), len(s)) // 5 2
+~~~
+
+O tamanho de um array faz parte do seu tipo: [5]int e [3]int são tipos diferentes, e o tamanho nunca muda. Um slice cresce com append, e é o que usas quase sempre em Go.`,
+
+        11: `~~~
+frase := "o rato roeu a roupa do rei de roma"
+palavras := strings.Fields(frase)
+
+frequencia := make(map[string]int)
+for _, p := range palavras {
+    frequencia[p]++
+}
+~~~
+
+strings.Fields separa a frase em palavras a partir dos espaços em branco. frequencia[p]++ funciona mesmo na primeira vez que vês uma palavra, porque ler uma chave que não existe devolve o valor zero do tipo, que para int é 0.`,
+
+        12: `~~~
+matriz := [][]int{
+    {1, 2, 3},
+    {4, 5, 6},
+    {7, 8, 9},
+}
+
+for _, linha := range matriz {
+    fmt.Println(linha)
+}
+~~~
+
+[][]int é um slice onde cada elemento é, ele próprio, um []int. Não há nada de mágico: é só um slice a guardar slices.`,
+
+        13: `~~~
+func Copiar(tarefas []Task) []Task {
+    copia := make([]Task, len(tarefas))
+    copy(copia, tarefas)
+    return copia
+}
+
+original := []Task{{Titulo: "A"}}
+copia := Copiar(original)
+copia[0].Titulo = "B"
+fmt.Println(original[0].Titulo) // continua "A"
+~~~
+
+copy() precisa de um slice de destino já com o tamanho certo, por isso primeiro crias copia com make. Sem isto, se apenas fizesses copia := tarefas, as duas variáveis apontariam para o mesmo array por baixo, e alterar uma alterava a outra.`,
+
+        14: `~~~
+func Achatar(matriz [][]int) []int {
+    var plano []int
+    for _, linha := range matriz {
+        plano = append(plano, linha...)
+    }
+    return plano
+}
+~~~
+
+linha... espalha os elementos do slice linha como argumentos individuais de append, em vez de os acrescentares como um único elemento slice-dentro-de-slice.`,
+      },
     },
     {
       id: "b3",
@@ -307,6 +613,145 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Implementa ValidarTask(t Task) error, que devolve um erro descritivo quando o campo Titulo está vazio.",
         "Usa defer e recover numa função que causa um panic de propósito, e recupera dele sem que o programa termine abruptamente.",
       ],
+      dicas: {
+        0: `~~~
+func Dividir(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, errors.New("divisão por zero")
+    }
+    return a / b, nil
+}
+~~~
+
+Por convenção, quando uma função devolve um erro, o erro é sempre o último valor de retorno. Quando não há erro, devolve-se nil.`,
+
+        1: `~~~
+func (p *Produto) Vender(qtd int) error {
+    if qtd > p.Stock {
+        return errors.New("stock insuficiente")
+    }
+    p.Stock -= qtd
+    return nil
+}
+~~~
+
+O mesmo Vender do Bloco 1, agora a devolver um error a sério em vez de uma string.`,
+
+        2: `~~~
+type ErroStockInsuficiente struct {
+    Pedido, Disponivel int
+}
+
+func (e ErroStockInsuficiente) Error() string {
+    return fmt.Sprintf("pedido de %d, mas só há %d em stock", e.Pedido, e.Disponivel)
+}
+~~~
+
+Qualquer tipo que implemente o método Error() string satisfaz a interface error. Guardar Pedido e Disponivel no próprio erro permite a quem o recebe inspecionar esses valores, e não só ler uma mensagem de texto.`,
+
+        3: `~~~
+func (p *Produto) Vender(qtd int) error {
+    if qtd > p.Stock {
+        return ErroStockInsuficiente{Pedido: qtd, Disponivel: p.Stock}
+    }
+    p.Stock -= qtd
+    return nil
+}
+
+err := produto.Vender(10)
+var errStock ErroStockInsuficiente
+if errors.As(err, &errStock) {
+    fmt.Println("faltam", errStock.Pedido-errStock.Disponivel)
+}
+~~~
+
+errors.As verifica se err é, ou contém, um valor do tipo de errStock, e se for, copia-o para essa variável. É a forma idiomática de recuperares um erro customizado a partir de um error genérico.`,
+
+        4: `~~~
+func BuscarPorID(id int, m map[int]Task) (Task, error) {
+    t, ok := m[id]
+    if !ok {
+        return Task{}, fmt.Errorf("tarefa %d não encontrada", id)
+    }
+    return t, nil
+}
+~~~
+
+A versão com bool é suficiente quando quem chama só precisa de saber se encontrou ou não. A versão com error compensa quando queres distinguir motivos de falha diferentes, ou propagar contexto sobre o que correu mal.`,
+
+        5: `~~~
+func processar() error {
+    if err := passo1(); err != nil {
+        return err
+    }
+    if err := passo2(); err != nil {
+        return err
+    }
+    if err := passo3(); err != nil {
+        return err
+    }
+    return nil
+}
+~~~
+
+Cada passo é verificado logo a seguir a correr, e a função sai imediatamente se algum falhar. É o padrão mais comum em Go para encadear operações que podem falhar, em vez de aninhar ifs uns dentro dos outros.`,
+
+        6: `~~~
+func abrirFicheiro() error {
+    _, err := os.Open("dados.txt")
+    if err != nil {
+        return fmt.Errorf("ao abrir dados.txt: %w", err)
+    }
+    return nil
+}
+~~~
+
+%w embrulha o erro original dentro do novo, em vez de o converter só em texto com %v. Isso permite que errors.Is e errors.As continuem a encontrar o erro original mais tarde, mesmo depois de várias camadas de contexto acrescentado.`,
+
+        7: `~~~
+var ErrNaoEncontrado = errors.New("não encontrado")
+
+func BuscarPorID(id int, m map[int]Task) (Task, error) {
+    t, ok := m[id]
+    if !ok {
+        return Task{}, ErrNaoEncontrado
+    }
+    return t, nil
+}
+
+_, err := BuscarPorID(99, m)
+if errors.Is(err, ErrNaoEncontrado) {
+    fmt.Println("não existe")
+}
+~~~
+
+Um sentinel error é um valor de erro específico, definido uma vez, que se compara com errors.Is. Diferente de ErroStockInsuficiente, aqui não há dados extra a guardar, só a identidade do erro.`,
+
+        8: `~~~
+func ValidarTask(t Task) error {
+    if t.Titulo == "" {
+        return errors.New("o título não pode estar vazio")
+    }
+    return nil
+}
+~~~`,
+
+        9: `~~~
+func seguro() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("recuperado de:", r)
+        }
+    }()
+    panic("algo correu muito mal")
+}
+
+seguro()
+fmt.Println("o programa continua") // esta linha corre na mesma
+~~~
+
+defer agenda a função anónima para correr quando seguro() terminar, mesmo que termine por panic. recover() só tem efeito dentro de uma função chamada diretamente por defer, e devolve nil quando não há panic em curso.`,
+      },
     },
     {
       id: "b4",
@@ -330,6 +775,115 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Implementa a interface sort.Interface, com os métodos Len(), Less() e Swap(), num []Task customizado, e ordena-o com sort.Sort().",
         "Escreve num comentário as tuas conclusões sobre quando compensa criar uma interface em vez de usar a struct diretamente.",
       ],
+      dicas: {
+        0: `~~~
+type Concluivel interface {
+    Concluir()
+}
+~~~
+
+Não precisas de escrever nada como "Task implements Concluivel". Basta que *Task tenha um método Concluir() com esta assinatura exata, e o compilador considera automaticamente que satisfaz a interface.`,
+
+        1: `~~~
+func ConcluirTudo(itens []Concluivel) {
+    for _, item := range itens {
+        item.Concluir()
+    }
+}
+~~~
+
+O parâmetro é do tipo da interface, não de um tipo concreto. ConcluirTudo aceita qualquer slice de valores que tenham um método Concluir(), sem saber, nem precisar de saber, que tipos concretos são esses.`,
+
+        2: `~~~
+type Habito struct {
+    Nome  string
+    Feito bool
+}
+
+func (h *Habito) Concluir() {
+    h.Feito = true
+}
+
+itens := []Concluivel{&Task{Titulo: "A"}, &Habito{Nome: "B"}}
+ConcluirTudo(itens)
+~~~
+
+Repara que uso &Task e &Habito: como Concluir() tem pointer receiver nos dois tipos, só os ponteiros satisfazem a interface, não os valores diretamente.`,
+
+        3: `~~~
+type Formatavel interface {
+    Resumo() string
+}
+
+func ImprimirTodos(itens []Formatavel) {
+    for _, item := range itens {
+        fmt.Println(item.Resumo())
+    }
+}
+~~~`,
+
+        4: `~~~
+func Descrever(v any) {
+    fmt.Printf("%T: %v\n", v, v)
+}
+
+Descrever(42)          // int: 42
+Descrever("texto")     // string: texto
+Descrever(Task{})      // main.Task: {0  false}
+~~~
+
+any é um pseudónimo do tipo interface{}, a interface vazia: como não exige método nenhum, qualquer valor a satisfaz. É útil quando uma função genuinamente precisa de aceitar qualquer coisa, mas usa-a com moderação, porque perdes a verificação de tipos em tempo de compilação.`,
+
+        5: `~~~
+func Descrever(v any) {
+    if t, ok := v.(Task); ok {
+        fmt.Println("é uma Task:", t.Titulo)
+        return
+    }
+    fmt.Printf("%T: %v\n", v, v)
+}
+~~~
+
+v.(Task) tenta converter v para o tipo Task. Na forma com dois valores, ok vem false em vez de gerar panic quando a conversão falha, tal como acontece a ler um map.`,
+
+        6: `~~~
+func Descrever(v any) {
+    switch x := v.(type) {
+    case Task:
+        fmt.Println("é uma Task:", x.Titulo)
+    case Produto:
+        fmt.Println("é um Produto:", x.Nome)
+    default:
+        fmt.Printf("tipo desconhecido: %T\n", x)
+    }
+}
+~~~
+
+Dentro de cada case, x já vem automaticamente com o tipo concreto desse case: no case Task, x é do tipo Task, não any. Isto substitui uma sequência de type assertions por algo mais direto de ler.`,
+
+        7: `~~~
+type Repositorio interface {
+    Adicionar(Task)
+    BuscarPorID(int) (Task, error)
+}
+~~~
+
+Por agora é só a assinatura, sem implementação nenhuma. Vais construir uma implementação real a sério no Bloco 10.`,
+
+        8: `~~~
+type PorTitulo []Task
+
+func (p PorTitulo) Len() int           { return len(p) }
+func (p PorTitulo) Less(i, j int) bool { return p[i].Titulo < p[j].Titulo }
+func (p PorTitulo) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+sort.Sort(PorTitulo(tarefas))
+~~~
+
+sort.Interface exige três métodos: Len, Less e Swap. Defini-los sobre um tipo novo, PorTitulo, que é só um []Task com nome próprio, é o padrão idiomático anterior à chegada de sort.Slice, que faz a mesma coisa sem precisares de declarar um tipo.`,
+
+        9: `Não há código certo ou errado aqui, é uma reflexão. Um fio condutor útil: cria uma interface quando precisas de tratar tipos diferentes da mesma forma, ou quando queres trocar a implementação sem tocar em quem a usa, como fizeste com o Repositorio em memória. Se só existe um tipo concreto e não prevês outro, a interface costuma ser peso a mais.`,
+      },
     },
     {
       id: "b5",
@@ -347,6 +901,62 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Cria uma pasta services/ com uma função que recebe []models.Task e devolve estatísticas, como a percentagem de tarefas concluídas.",
         "Confirma que o comando go build ./... corre sem erros com esta nova estrutura de pastas.",
       ],
+      dicas: {
+        0: `~~~
+meu-projeto/
+├── go.mod
+├── main.go
+└── task.go
+~~~
+
+Os dois ficheiros continuam a começar com package main, e podem usar-se um ao outro livremente, como se estivessem no mesmo ficheiro. A divisão é só organizacional, não cria nenhuma fronteira nova.`,
+
+        1: `~~~
+meu-projeto/
+├── go.mod        // module github.com/tu/meu-projeto
+├── main.go
+└── models/
+    └── task.go   // package models
+~~~
+
+~~~
+// em main.go
+import "github.com/tu/meu-projeto/models"
+
+t := models.Task{Titulo: "Estudar"}
+~~~
+
+O caminho de import é o nome do módulo, definido no go.mod, seguido do caminho da pasta a partir da raiz do projeto. Dentro de models/task.go, os campos continuam a precisar de maiúscula inicial para serem visíveis fora do pacote.`,
+
+        2: `O struct Produto passa da raiz do projeto para dentro de models/task.go, ou de um ficheiro próprio como models/produto.go, tal como fizeste com Task. Depois disso, no resto do código passas a escrever models.Produto em vez de só Produto.`,
+
+        3: `~~~
+package services
+
+import "github.com/tu/meu-projeto/models"
+
+func PercentagemConcluida(tarefas []models.Task) float64 {
+    if len(tarefas) == 0 {
+        return 0
+    }
+    concluidas := 0
+    for _, t := range tarefas {
+        if t.Concluida {
+            concluidas++
+        }
+    }
+    return float64(concluidas) / float64(len(tarefas)) * 100
+}
+~~~
+
+Repara na conversão explícita float64(concluidas): Go não converte tipos numéricos automaticamente, nem entre int e float64, e uma divisão entre dois int daria sempre um resultado inteiro.`,
+
+        4: `~~~
+go build ./...
+~~~
+
+./... diz ao comando para procurar em todas as pastas a partir da atual. Se este comando corre sem erros, confirma que os imports entre main, models e services estão todos corretos.`,
+      },
     },
     {
       id: "b6",
@@ -372,6 +982,120 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Corre a suite de testes toda com go test -v ./... a partir da raiz do projeto.",
         "Compara correr os testes manualmente com deixar o CI correr sozinho a cada push, e repara na diferença que isso faz na tua confiança para alterar código.",
       ],
+      dicas: {
+        0: `~~~
+go vet ./...
+~~~
+
+go vet analisa o código à procura de erros comuns que compilam mas provavelmente estão errados, como um Printf com o número errado de argumentos. ./... diz para verificar o pacote atual e todos os que estão dentro dele.`,
+
+        1: `~~~
+golangci-lint run
+~~~
+
+golangci-lint corre dezenas de linters em conjunto, com configuração sensata por omissão. Instala-se seguindo as instruções no site oficial, normalmente com um script de instalação ou via go install.`,
+
+        2: `~~~
+func TestResumo(t *testing.T) {
+    casos := []struct {
+        nome     string
+        tarefa   Task
+        esperado string
+    }{
+        {"pendente", Task{Titulo: "A", Concluida: false}, "[ ] A"},
+        {"concluida", Task{Titulo: "A", Concluida: true}, "[✓] A"},
+    }
+
+    for _, c := range casos {
+        t.Run(c.nome, func(t *testing.T) {
+            if got := c.tarefa.Resumo(); got != c.esperado {
+                t.Errorf("got %q, want %q", got, c.esperado)
+            }
+        })
+    }
+}
+~~~
+
+Um table-driven test define uma lista de casos, cada um com entrada e resultado esperado, e corre o mesmo código de verificação para todos. t.Run cria um subteste nomeado para cada caso, o que ajuda a identificar exatamente qual falhou.`,
+
+        3: `~~~
+func TestVender(t *testing.T) {
+    p := Produto{Stock: 5}
+
+    if err := p.Vender(3); err != nil {
+        t.Fatalf("esperava sucesso, veio erro: %v", err)
+    }
+
+    if err := p.Vender(10); err == nil {
+        t.Fatal("esperava erro de stock insuficiente, veio nil")
+    }
+}
+~~~
+
+t.Fatalf, ao contrário de t.Errorf, interrompe o teste de imediato. Faz sentido aqui porque, se o primeiro Vender falhar inesperadamente, não há motivo para continuar a testar o segundo caso.`,
+
+        4: `~~~
+func TestBuscarPorID(t *testing.T) {
+    m := map[int]Task{1: {ID: 1, Titulo: "A"}}
+
+    if _, err := BuscarPorID(1, m); err != nil {
+        t.Errorf("esperava encontrar, veio erro: %v", err)
+    }
+
+    if _, err := BuscarPorID(99, m); err == nil {
+        t.Error("esperava erro, veio nil")
+    }
+}
+~~~`,
+
+        5: `~~~
+func TestValidarTask(t *testing.T) {
+    if err := ValidarTask(Task{Titulo: ""}); err == nil {
+        t.Error("esperava erro com título vazio")
+    }
+    if err := ValidarTask(Task{Titulo: "Algo"}); err != nil {
+        t.Errorf("não esperava erro, veio: %v", err)
+    }
+}
+~~~`,
+
+        6: `~~~
+import "github.com/stretchr/testify/assert"
+
+func TestResumo(t *testing.T) {
+    tarefa := Task{Titulo: "A", Concluida: true}
+    assert.Equal(t, "[✓] A", tarefa.Resumo())
+}
+~~~
+
+assert.Equal compara os dois valores e, se forem diferentes, regista o erro e mostra os dois lados de forma legível, sem precisares de escrever o if manualmente. Ao contrário de t.Fatal, não interrompe o teste logo ali.`,
+
+        7: `~~~
+# .github/workflows/go.yml
+name: Go
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go build ./...
+      - run: go test ./...
+~~~
+
+Este ficheiro corre a cada push: descarrega o código, instala o Go, e corre o build e os testes. Se algum destes passos falhar, o GitHub marca o commit com uma cruz vermelha.`,
+
+        8: `~~~
+go test -v ./...
+~~~
+
+-v mostra o nome de cada teste à medida que corre, em vez de só o resultado final. ./... corre os testes de todos os pacotes do projeto, não só o atual.`,
+
+        9: `Não há código para este exercício: é uma comparação de fluxo de trabalho. A diferença que vais notar é que, com CI, um erro introduzido por engano aparece assinalado no GitHub minutos depois do push, mesmo que te tenhas esquecido de correr os testes localmente antes de o fazeres.`,
+      },
     },
     {
       id: "b7",
@@ -393,6 +1117,83 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Lê um ficheiro JSON com os.ReadFile e converte o conteúdo, com Unmarshal, para um slice de Tasks.",
         "Escreve um slice de Tasks para um ficheiro JSON, combinando json.Marshal com os.WriteFile.",
       ],
+      dicas: {
+        0: `~~~
+type Task struct {
+    ID        int    \`json:"id"\`
+    Titulo    string \`json:"titulo"\`
+    Concluida bool   \`json:"concluida"\`
+}
+~~~
+
+A tag entre crases diz ao pacote encoding/json qual o nome a usar no JSON para cada campo. Sem tags, ele usaria o próprio nome do campo Go: ID, Titulo, Concluida.`,
+
+        1: `~~~
+task := Task{ID: 1, Titulo: "Estudar Go", Concluida: false}
+dados, err := json.Marshal(task)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(string(dados)) // {"id":1,"titulo":"Estudar Go","concluida":false}
+~~~
+
+json.Marshal devolve []byte, não string, por isso a conversão string(dados) é o que faz aparecer como texto legível no Println.`,
+
+        2: `~~~
+texto := \`{"id":1,"titulo":"Estudar Go","concluida":false}\`
+
+var task Task
+err := json.Unmarshal([]byte(texto), &task)
+~~~
+
+Unmarshal precisa de um ponteiro para a variável de destino, &task, porque é ele que vai escrever os valores lá dentro. Sem o &, estarias a passar uma cópia que se perde assim que a função termina.`,
+
+        3: `~~~
+dados, _ := json.MarshalIndent(task, "", "  ")
+fmt.Println(string(dados))
+~~~
+
+O segundo argumento é um prefixo para cada linha, normalmente vazio. O terceiro é a indentação a repetir por cada nível, aqui dois espaços.`,
+
+        4: `~~~
+tarefas := []Task{{ID: 1, Titulo: "A"}, {ID: 2, Titulo: "B"}}
+dados, _ := json.Marshal(tarefas)
+fmt.Println(string(dados)) // [{"id":1,...},{"id":2,...}]
+~~~
+
+json.Marshal funciona sobre slices tal como sobre valores individuais: um []Task vira um array JSON, um Task sozinho vira um objeto.`,
+
+        5: `~~~
+type Produto struct {
+    Nome     string  \`json:"nome"\`
+    Desconto float64 \`json:"desconto,omitempty"\`
+}
+~~~
+
+Com omitempty, o campo só aparece no JSON se tiver um valor diferente do valor zero do seu tipo. Para float64, isso significa que Desconto só sai se for diferente de 0.`,
+
+        6: `~~~
+dados, err := os.ReadFile("tarefas.json")
+if err != nil {
+    log.Fatal(err)
+}
+
+var tarefas []Task
+err = json.Unmarshal(dados, &tarefas)
+~~~
+
+os.ReadFile lê o ficheiro todo de uma vez para []byte, que é exatamente o que Unmarshal espera receber.`,
+
+        7: `~~~
+dados, err := json.Marshal(tarefas)
+if err != nil {
+    log.Fatal(err)
+}
+err = os.WriteFile("tarefas.json", dados, 0644)
+~~~
+
+0644 são as permissões do ficheiro criado, no formato Unix habitual: leitura e escrita para o dono, só leitura para os outros.`,
+      },
     },
     {
       id: "b8",
@@ -417,6 +1218,100 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Testa os teus endpoints com curl ou com uma ferramenta como Postman ou Insomnia.",
         "O objetivo deste bloco é perceberes net/http puro antes de passares a usar um router.",
       ],
+      dicas: {
+        0: `~~~
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintln(w, "Olá!")
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8080", nil)
+}
+~~~
+
+ListenAndServe bloqueia o programa ali, a aceitar pedidos, até o processo ser terminado ou ocorrer um erro fatal. w é onde escreves a resposta, r é o pedido recebido.`,
+
+        1: `~~~
+http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintln(w, "pong")
+})
+~~~`,
+
+        2: `~~~
+http.HandleFunc("/saudacao", func(w http.ResponseWriter, r *http.Request) {
+    nome := r.URL.Query().Get("nome")
+    fmt.Fprintf(w, "Olá, %s", nome)
+})
+~~~
+
+r.URL.Query() devolve os parâmetros da query string como um map. Get("nome") devolve a string vazia se o parâmetro não existir, em vez de erro.`,
+
+        3: `~~~
+http.HandleFunc("/tarefas", func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(tarefas)
+})
+~~~
+
+O Content-Type diz ao cliente que formato esperar. json.NewEncoder(w).Encode escreve o JSON diretamente para w, sem precisares de o converter primeiro para []byte.`,
+
+        4: `~~~
+http.HandleFunc("/tarefas/99", func(w http.ResponseWriter, r *http.Request) {
+    http.Error(w, "tarefa não encontrada", http.StatusNotFound)
+})
+~~~
+
+http.Error define o código de estado e escreve a mensagem no corpo da resposta, tudo numa só chamada. http.StatusNotFound é só o número 404 com um nome legível.`,
+
+        5: `~~~
+http.HandleFunc("/tarefas", func(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case http.MethodGet:
+        fmt.Fprintln(w, "a listar tarefas")
+    case http.MethodPost:
+        fmt.Fprintln(w, "a criar tarefa")
+    default:
+        http.Error(w, "método não suportado", http.StatusMethodNotAllowed)
+    }
+})
+~~~`,
+
+        6: `~~~
+var task Task
+err := json.NewDecoder(r.Body).Decode(&task)
+if err != nil {
+    http.Error(w, "JSON inválido", http.StatusBadRequest)
+    return
+}
+~~~
+
+r.Body é o corpo do pedido, e comporta-se como um leitor de onde só se lê uma vez. Decode faz o parse diretamente a partir daí, sem precisares de ler tudo para uma variável intermédia primeiro.`,
+
+        7: `~~~
+func comLog(next http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        inicio := time.Now()
+        next(w, r)
+        fmt.Println(r.URL.Path, time.Since(inicio))
+    }
+}
+
+http.HandleFunc("/ping", comLog(handler))
+~~~
+
+Um middleware é uma função que recebe um handler e devolve outro handler que o envolve. comLog corre código antes e depois de chamar next, sem o handler original precisar de saber que está a ser cronometrado.`,
+
+        8: `~~~
+curl http://localhost:8080/ping
+curl "http://localhost:8080/saudacao?nome=Ana"
+curl -X POST http://localhost:8080/tarefas -d "{\"titulo\":\"Nova\"}"
+~~~
+
+-X define o método HTTP, -d envia um corpo no pedido. Sem -X, o curl assume GET por omissão.`,
+
+        9: `Não há código novo aqui: é o momento de perceberes o que um router como o chi, que vais usar já no próximo bloco, está de facto a poupar-te. Sem ele, cada rota nova significa mais um if a comparar r.URL.Path à mão.`,
+      },
     },
     {
       id: "b9",
@@ -436,6 +1331,46 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Separa o projeto em três camadas: handler, que recebe o pedido HTTP; service, com a regra de negócio; e repository, que por agora guarda os dados em memória com um map.",
         "Explica por escrito por que razão separaste o projeto em camadas.",
       ],
+      dicas: {
+        0: `~~~
+r := chi.NewRouter()
+r.Get("/ping", handler)
+http.ListenAndServe(":8080", r)
+~~~
+
+chi.NewRouter() devolve algo que também satisfaz a interface http.Handler, por isso passa-se diretamente a ListenAndServe, tal como antes fazias com nil.`,
+
+        1: `~~~
+r.Get("/tasks/{id}", func(w http.ResponseWriter, r *http.Request) {
+    id := chi.URLParam(r, "id")
+    fmt.Fprintln(w, "tarefa", id)
+})
+~~~
+
+{id} na rota é um segmento variável. chi.URLParam lê o valor que veio nesse segmento para o pedido atual, sempre como string, mesmo que represente um número.`,
+
+        2: `~~~
+r.Route("/tasks", func(r chi.Router) {
+    r.Get("/", listarHandler)
+    r.Post("/", criarHandler)
+    r.Get("/{id}", obterHandler)
+})
+~~~
+
+Dentro do Route, as rotas ficam relativas ao prefixo /tasks. Isto evita repetires /tasks no início de cada uma.`,
+
+        3: `~~~
+r.Use(middleware.Logger)
+~~~
+
+r.Use regista um middleware que se aplica a todas as rotas definidas depois dele. middleware.Logger já vem incluído no pacote chi/middleware, e regista cada pedido recebido.`,
+
+        4: `Move cada handler para handlers/task_handler.go, com package handlers no topo. No ficheiro principal, importa o pacote e regista as rotas normalmente: r.Get("/tasks", handlers.Listar).`,
+
+        5: `O handler recebe o pedido HTTP e chama o service. O service tem a regra de negócio, como validações, e chama o repository. O repository só sabe guardar e procurar dados, sem saber nada de HTTP nem das regras que os rodeiam.`,
+
+        6: `Sem código para este: escreve as tuas conclusões em comentário ou num ficheiro à parte. A ideia central costuma ser: cada camada só conhece a que está imediatamente a seguir a ela, o que torna possível testar o service sem precisares de um servidor a correr.`,
+      },
     },
     {
       id: "b10",
@@ -454,6 +1389,98 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Implementa PATCH /tasks/{id}/concluir, um endpoint dedicado que só marca a tarefa como concluída.",
         "Adiciona validação, de forma que um POST com o título vazio devolva 400 Bad Request com uma mensagem clara.",
       ],
+      dicas: {
+        0: `~~~
+var proximoID = 1
+
+func criarTask(w http.ResponseWriter, r *http.Request) {
+    var task Task
+    json.NewDecoder(r.Body).Decode(&task)
+    task.ID = proximoID
+    proximoID++
+    tarefas[task.ID] = task
+    json.NewEncoder(w).Encode(task)
+}
+~~~
+
+Um contador simples numa variável package-level é suficiente para uma API em memória. Numa base de dados a sério, isto seria substituído por uma coluna auto-incremento ou por um identificador gerado, como um UUID.`,
+
+        1: `~~~
+func listarTasks(w http.ResponseWriter, r *http.Request) {
+    var lista []Task
+    for _, t := range tarefas {
+        lista = append(lista, t)
+    }
+    json.NewEncoder(w).Encode(lista)
+}
+~~~`,
+
+        2: `~~~
+func obterTask(w http.ResponseWriter, r *http.Request) {
+    id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+    task, ok := tarefas[id]
+    if !ok {
+        http.Error(w, "não encontrada", http.StatusNotFound)
+        return
+    }
+    json.NewEncoder(w).Encode(task)
+}
+~~~
+
+strconv.Atoi converte a string do parâmetro para int. Como o id vem sempre como texto do URL, precisas desta conversão antes de o usares como chave do map.`,
+
+        3: `~~~
+func atualizarTask(w http.ResponseWriter, r *http.Request) {
+    id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+    task, ok := tarefas[id]
+    if !ok {
+        http.Error(w, "não encontrada", http.StatusNotFound)
+        return
+    }
+    json.NewDecoder(r.Body).Decode(&task)
+    task.ID = id
+    tarefas[id] = task
+    json.NewEncoder(w).Encode(task)
+}
+~~~
+
+task.ID = id depois do Decode garante que o identificador da tarefa não muda, mesmo que o corpo do pedido traga um id diferente por engano.`,
+
+        4: `~~~
+func removerTask(w http.ResponseWriter, r *http.Request) {
+    id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+    delete(tarefas, id)
+    w.WriteHeader(http.StatusNoContent)
+}
+~~~
+
+204 No Content é a resposta convencional para uma remoção bem-sucedida, sem corpo nenhum a devolver.`,
+
+        5: `~~~
+func concluirTask(w http.ResponseWriter, r *http.Request) {
+    id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+    task, ok := tarefas[id]
+    if !ok {
+        http.Error(w, "não encontrada", http.StatusNotFound)
+        return
+    }
+    task.Concluida = true
+    tarefas[id] = task
+    json.NewEncoder(w).Encode(task)
+}
+~~~
+
+Um endpoint dedicado como este evita que o cliente tenha de enviar a tarefa inteira só para mudar um campo, o que seria o caso se usasses PUT para isto.`,
+
+        6: `~~~
+if task.Titulo == "" {
+    http.Error(w, "o título é obrigatório", http.StatusBadRequest)
+    return
+}
+~~~
+
+Esta verificação entra logo a seguir ao Decode, antes de guardares fosse o que fosse. 400 Bad Request é o código correto quando o problema está nos dados que o cliente enviou.`,
+      },
     },
     {
       id: "b11",
@@ -470,6 +1497,80 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Testa o repository isoladamente, confirmando que Adicionar e BuscarPorID funcionam corretamente em conjunto.",
         "Corre go test -v ./... em todo o projeto e confirma que todos os testes passam.",
       ],
+      dicas: {
+        0: `~~~
+func TestCriarTask(t *testing.T) {
+    repo := NewRepositorioMemoria()
+    service := NewTaskService(repo)
+
+    task, err := service.Criar("Estudar Go")
+    if err != nil {
+        t.Fatalf("erro inesperado: %v", err)
+    }
+    if task.Titulo != "Estudar Go" {
+        t.Errorf("titulo = %q, want %q", task.Titulo, "Estudar Go")
+    }
+}
+~~~
+
+Nenhum servidor HTTP entra aqui. O teste chama diretamente o service, com um repository em memória, o que o torna rápido e independente de rede ou porta ocupada.`,
+
+        1: `~~~
+func TestConcluirTask(t *testing.T) {
+    repo := NewRepositorioMemoria()
+    repo.Adicionar(Task{ID: 1, Titulo: "A"})
+    service := NewTaskService(repo)
+
+    err := service.Concluir(1)
+    if err != nil {
+        t.Fatalf("erro inesperado: %v", err)
+    }
+
+    task, _ := repo.BuscarPorID(1)
+    if !task.Concluida {
+        t.Error("esperava a tarefa concluída")
+    }
+}
+~~~
+
+O teste prepara o estado inicial diretamente no repository, chama a operação através do service, e depois confirma o resultado voltando a ler do repository.`,
+
+        2: `~~~
+func TestListarTarefasPendentes(t *testing.T) {
+    tarefas := []Task{
+        {Titulo: "A", Concluida: false},
+        {Titulo: "B", Concluida: true},
+    }
+    pendentes := TarefasPendentes(tarefas)
+    if len(pendentes) != 1 {
+        t.Errorf("len = %d, want 1", len(pendentes))
+    }
+}
+~~~
+
+A mesma função TarefasPendentes que escreveste no Bloco 2, só que agora com um teste a confirmar o comportamento em vez de a verificares a olho.`,
+
+        3: `~~~
+func TestRepositorioMemoria(t *testing.T) {
+    repo := NewRepositorioMemoria()
+    repo.Adicionar(Task{ID: 1, Titulo: "A"})
+
+    task, err := repo.BuscarPorID(1)
+    if err != nil {
+        t.Fatalf("erro inesperado: %v", err)
+    }
+    if task.Titulo != "A" {
+        t.Errorf("titulo = %q, want %q", task.Titulo, "A")
+    }
+}
+~~~`,
+
+        4: `~~~
+go test -v ./...
+~~~
+
+Se tudo o que escreveste nos blocos anteriores estiver bem ligado, este comando deve terminar sem nenhum FAIL. É o momento de confirmares o projeto todo de uma vez.`,
+      },
     },
     {
       id: "b12",
@@ -486,6 +1587,38 @@ O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não s
         "Escreve um README curto que explique cada endpoint: método, rota, e um exemplo de request e de response.",
         "Faz o deploy da API no Render ou no Railway, e testa-a a partir de fora da tua máquina usando curl.",
       ],
+      dicas: {
+        0: `~~~
+meu-projeto/
+├── go.mod
+├── main.go
+├── models/
+├── services/
+├── handlers/
+└── handlers/handler_test.go
+~~~
+
+Não há código novo neste exercício: é o momento de olhares para tudo o que já construíste nos blocos anteriores e verificares que continua a encaixar como um todo coerente.`,
+
+        1: `~~~
+## POST /tasks
+Cria uma nova tarefa.
+
+Request:
+{"titulo": "Estudar Go"}
+
+Response: 201
+{"id": 1, "titulo": "Estudar Go", "concluida": false}
+~~~
+
+Repete esta estrutura, método, rota, exemplo de request, exemplo de response, para cada endpoint que construíste no Bloco 10.`,
+
+        2: `~~~
+curl https://a-tua-api.onrender.com/tasks
+~~~
+
+Testar a partir de fora da tua máquina confirma que o deploy está mesmo acessível publicamente, e não só a funcionar no teu localhost.`,
+      },
     },
   ],
 };
@@ -517,6 +1650,170 @@ const TRILHA_DOMINIOS = {
         "Constrói a versão em API: os endpoints GET /passagens, GET /passagens/tipo/{tipo}, GET /passagens/total e DELETE /passagens/{codigoVoo}.",
         "Como bónus, gera um relatório exportável em JSON, com json.MarshalIndent, ou em CSV, em vez de PDF.",
       ],
+      dicas: {
+        0: `~~~
+type Passagem struct {
+    CodigoVoo   string
+    Nome        string
+    Apelido     string
+    DataPartida string
+    HoraPartida string
+    HoraChegada string
+    Estado      string
+    Origem      string
+    Destino     string
+    ValorBase   float64
+}
+~~~`,
+
+        1: `~~~
+type CalculadoraValor interface {
+    ValorFinal() float64
+}
+~~~`,
+
+        2: `~~~
+type PassagemInternacional struct {
+    Passagem
+    TemVisto      bool
+    Directo       bool
+    RefeicaoExtra bool
+    HorasTransito int
+}
+
+func (p PassagemInternacional) ValorFinal() float64 {
+    valor := p.ValorBase
+
+    if p.Directo && p.RefeicaoExtra {
+        valor += 3000
+    }
+    if !p.Directo && p.HorasTransito >= 6 && p.HorasTransito <= 12 {
+        valor *= 0.9
+    }
+    if !p.TemVisto {
+        valor *= 1.25
+    }
+    valor *= 1.16 // IVA
+
+    return valor
+}
+~~~
+
+O método vai aplicando cada regra por cima do valor acumulado até ali, e só no fim acrescenta o IVA. A regra do hotel para trânsito acima de 12 horas não altera o preço aqui, é uma condição que registarias separadamente se precisasses dela.`,
+
+        3: `~~~
+type PassagemDomestica struct {
+    Passagem
+    Periodo string
+}
+
+func (p PassagemDomestica) ValorFinal() float64 {
+    valor := p.ValorBase
+
+    switch p.Periodo {
+    case "tarde":
+        valor *= 1.1
+    case "noite":
+        valor *= 1.2
+    }
+
+    return valor * 1.16
+}
+~~~`,
+
+        4: `~~~
+func LerPassagensDeFicheiro(caminho string) ([]CalculadoraValor, error) {
+    linhas, err := lerLinhas(caminho) // função auxiliar tua
+    if err != nil {
+        return nil, err
+    }
+
+    var passagens []CalculadoraValor
+    for _, l := range linhas {
+        if l.Tipo == "internacional" {
+            passagens = append(passagens, PassagemInternacional{})
+        } else {
+            passagens = append(passagens, PassagemDomestica{})
+        }
+    }
+    return passagens, nil
+}
+~~~
+
+O slice é de CalculadoraValor, a interface, não de um tipo concreto. É isto que te permite guardar PassagemInternacional e PassagemDomestica lado a lado no mesmo slice: para quem o lê, ambos são só algo que sabe calcular ValorFinal().`,
+
+        5: `~~~
+func ContarPorTipo(passagens []CalculadoraValor) (internacionais, domesticas int) {
+    for _, p := range passagens {
+        switch p.(type) {
+        case PassagemInternacional:
+            internacionais++
+        case PassagemDomestica:
+            domesticas++
+        }
+    }
+    return
+}
+~~~`,
+
+        6: `~~~
+func ValorTotalPago(passagens []CalculadoraValor) float64 {
+    total := 0.0
+    for _, p := range passagens {
+        total += p.ValorFinal()
+    }
+    return total
+}
+~~~
+
+Esta função nunca precisa de saber se p é internacional ou doméstica: chama ValorFinal() e confia que cada tipo sabe calcular o seu próprio valor. É o próprio motivo de existir a interface.`,
+
+        7: `~~~
+func PassagensDoMes(passagens []CalculadoraValor, mes int) []CalculadoraValor {
+    var resultado []CalculadoraValor
+    for _, p := range passagens {
+        var data string
+        switch v := p.(type) {
+        case PassagemInternacional:
+            data = v.DataPartida
+        case PassagemDomestica:
+            data = v.DataPartida
+        }
+        if extrairMes(data) == mes {
+            resultado = append(resultado, p)
+        }
+    }
+    return resultado
+}
+~~~
+
+Como DataPartida vem do struct Passagem embutido, acedes-lhe através de v depois do type switch. extrairMes seria uma função auxiliar tua para fazeres o parsing da data.`,
+
+        8: `~~~
+func SituacaoEmpresa(valorTotal, orcamento float64) (lucro bool, valor float64) {
+    diferenca := valorTotal - orcamento
+    return diferenca > 0, diferenca
+}
+~~~`,
+
+        9: `O menu não precisa de nada novo além do que já viste no Bloco 0 e no Bloco 2: um for infinito com um switch a ler a opção escolhida, chamando as funções que já construíste nos exercícios anteriores deste domínio.`,
+
+        10: `~~~
+GET    /passagens
+GET    /passagens/tipo/{tipo}
+GET    /passagens/total
+DELETE /passagens/{codigoVoo}
+~~~
+
+Os mesmos padrões de handler que praticaste nos Blocos 8, 9 e 10, agora sobre este domínio em vez de tarefas.`,
+
+        11: `~~~
+dados, _ := json.MarshalIndent(passagens, "", "  ")
+os.WriteFile("relatorio.json", dados, 0644)
+~~~
+
+O mesmo padrão do Bloco 7, aplicado ao slice de passagens em vez de tarefas.`,
+      },
     },
     {
       id: "d2",
@@ -536,6 +1833,84 @@ const TRILHA_DOMINIOS = {
         "Cria um map[int]CalculadoraPedido que regista os pedidos por código, e implementa uma função BuscarPorID para os encontrar.",
         "Constrói a versão em linha de comandos ou em API: registar um pedido, listar os pedidos numa tabela, calcular o valor total com IVA incluído e cancelar um pedido pelo código.",
       ],
+      dicas: {
+        0: `~~~
+type Pedido struct {
+    Codigo      int
+    NomeCliente string
+    Marca       string
+    Valor       float64
+}
+~~~`,
+
+        1: `~~~
+type CalculadoraPedido interface {
+    ValorAPagar() float64
+}
+~~~`,
+
+        2: `~~~
+type PedidoCorporativo struct {
+    Pedido
+    Quantidade int
+}
+
+func (p PedidoCorporativo) ValorAPagar() float64 {
+    return p.Valor * float64(p.Quantidade)
+}
+~~~`,
+
+        3: `~~~
+type PedidoIndividual struct {
+    Pedido
+    TipoCompra string
+}
+
+func (p PedidoIndividual) ValorAPagar() float64 {
+    if p.TipoCompra == "Novo" {
+        return p.Valor * 0.95
+    }
+    return p.Valor
+}
+~~~`,
+
+        4: `~~~
+type PedidoColaborador struct {
+    Pedido
+    NumDeducoes int
+}
+
+func (p PedidoColaborador) ValorAPagar() float64 {
+    return p.Valor / float64(p.NumDeducoes)
+}
+~~~`,
+
+        5: `~~~
+func comIVA(valor float64) float64 {
+    return valor * 1.16
+}
+
+func (p PedidoCorporativo) ValorAPagar() float64 {
+    return comIVA(p.Valor * float64(p.Quantidade))
+}
+~~~
+
+Uma função auxiliar partilhada evita repetires * 1.16 em cada um dos três métodos, e centraliza a regra num único sítio caso a taxa alguma vez mude.`,
+
+        6: `~~~
+pedidos := make(map[int]CalculadoraPedido)
+pedidos[1] = PedidoCorporativo{Pedido: Pedido{Codigo: 1}, Quantidade: 10}
+
+func BuscarPorID(codigo int, m map[int]CalculadoraPedido) (CalculadoraPedido, bool) {
+    p, ok := m[codigo]
+    return p, ok
+}
+~~~
+
+O mesmo padrão (valor, ok) que já usaste no Bloco 2, agora sobre um map cujo valor é uma interface em vez de um struct concreto.`,
+
+        7: `Reaproveita a estrutura de handlers ou de menu que já construíste no Domínio 1: os mesmos padrões de listar, calcular total e cancelar por código aplicam-se aqui, só a mudar o domínio de passagens para pedidos.`,
+      },
     },
     {
       id: "d3",
@@ -553,6 +1928,94 @@ const TRILHA_DOMINIOS = {
         "Implementa ValorTotalPremios(participantes []Participante) float64, atribuindo 1000Mts a quem ganhou em 2 ou 3 rounds.",
         "Como bónus, gera uma matriz [][]float64 de 5 linhas por 10 colunas com valores aleatórios de math/rand, extrai a 3ª e a 5ª linha como slices próprios, e calcula o produto total de todos os elementos.",
       ],
+      dicas: {
+        0: `~~~
+type Participante struct {
+    Nome       string
+    Rounds     int
+    TempoMedio float64
+    Resultado  string
+}
+~~~`,
+
+        1: `~~~
+func LerParticipantes(caminho string) ([]Participante, error) {
+    dados, err := os.ReadFile(caminho)
+    if err != nil {
+        return nil, err
+    }
+    // faz o parsing de dados linha a linha para []Participante
+    return participantes, nil
+}
+~~~
+
+O mesmo padrão de leitura de ficheiro que praticaste no Bloco 0 e no Bloco 7, agora a construir a tua própria função de parsing linha a linha, com strings.Split ou strings.Fields.`,
+
+        2: `~~~
+func ContarResultados(participantes []Participante) (ganharam, perderam int) {
+    for _, p := range participantes {
+        if p.Resultado == "ganhou" {
+            ganharam++
+        } else {
+            perderam++
+        }
+    }
+    return
+}
+~~~
+
+Como ganharam e perderam já estão nomeados na assinatura da função, um return sozinho no fim devolve o que estiver guardado neles nesse momento, tal como praticaste no Bloco 0.`,
+
+        3: `~~~
+func MenorTempoEntreVencedores(participantes []Participante) (Participante, error) {
+    var melhor Participante
+    encontrado := false
+
+    for _, p := range participantes {
+        if p.Resultado != "ganhou" {
+            continue
+        }
+        if !encontrado || p.TempoMedio < melhor.TempoMedio {
+            melhor = p
+            encontrado = true
+        }
+    }
+
+    if !encontrado {
+        return Participante{}, errors.New("nenhum vencedor encontrado")
+    }
+    return melhor, nil
+}
+~~~
+
+A flag encontrado resolve o problema de qual valor inicial dar a melhor: sem ela, comparavas sempre contra o valor zero de TempoMedio, que é 0, e nunca haveria vencedor com tempo menor do que isso.`,
+
+        4: `~~~
+func ValorTotalPremios(participantes []Participante) float64 {
+    total := 0.0
+    for _, p := range participantes {
+        if p.Resultado == "ganhou" && (p.Rounds == 2 || p.Rounds == 3) {
+            total += 1000
+        }
+    }
+    return total
+}
+~~~`,
+
+        5: `~~~
+var matriz [5][10]float64
+for i := range matriz {
+    for j := range matriz[i] {
+        matriz[i][j] = rand.Float64() * 100
+    }
+}
+
+linha3 := matriz[2][:]
+linha5 := matriz[4][:]
+~~~
+
+matriz[2][:] transforma a linha de índice 2 do array, ou seja, a 3ª linha, num slice próprio, que passas a poder tratar como qualquer outro slice.`,
+      },
     },
     {
       id: "d4",
@@ -572,6 +2035,107 @@ const TRILHA_DOMINIOS = {
         "Implementa CalcularPontuacao(diferenca []int) int: uma diferença negativa vale 0 pontos, zero vale 1 ponto, e uma diferença positiva vale 3 pontos.",
         "Implementa o teu próprio BubbleSort, escrito manualmente sobre diferenca, sem usares sort.Slice. É treino de lógica antes de dependeres da standard library.",
       ],
+      dicas: {
+        0: `~~~
+type Cliente struct {
+    Nome       string
+    KiloJoules int
+    Litros     int
+    Tipo       string
+}
+~~~`,
+
+        1: `~~~
+func ValorAPagar(c Cliente) float64 {
+    valor := float64(c.KiloJoules)*2 + float64(c.Litros)*3
+    consumo := c.KiloJoules + c.Litros
+
+    if consumo > 100 {
+        valor *= 0.9
+    }
+
+    return valor * 1.16
+}
+~~~
+
+O desconto e o IVA aplicam-se em sequência sobre o mesmo valor: primeiro o desconto, se aplicável, e só depois o IVA sobre o que sobrou.`,
+
+        2: `~~~
+func ContarPorTipo(clientes []Cliente) (empresas, particulares int) {
+    for _, c := range clientes {
+        if c.Tipo == "E" {
+            empresas++
+        } else {
+            particulares++
+        }
+    }
+    return
+}
+~~~`,
+
+        3: `~~~
+func ValorTotalPorFornecedor(clientes []Cliente) (totalEDM, totalFIPAG float64) {
+    for _, c := range clientes {
+        totalEDM += float64(c.KiloJoules) * 2
+        totalFIPAG += float64(c.Litros) * 3
+    }
+    return
+}
+~~~`,
+
+        4: `~~~
+func FornecedorQueMaisFaturou(totalEDM, totalFIPAG float64) string {
+    if totalEDM > totalFIPAG {
+        return "EDM"
+    }
+    return "FIPAG"
+}
+~~~`,
+
+        5: `~~~
+golosMarcados := make([]int, 10)
+golosSofridos := make([]int, 10)
+diferenca := make([]int, 10)
+
+for i := range diferenca {
+    diferenca[i] = golosMarcados[i] - golosSofridos[i]
+}
+~~~
+
+Preenche primeiro golosMarcados e golosSofridos, à mão ou com valores aleatórios, antes de calculares a diferença jogo a jogo.`,
+
+        6: `~~~
+func CalcularPontuacao(diferenca []int) int {
+    pontos := 0
+    for _, d := range diferenca {
+        switch {
+        case d < 0:
+            pontos += 0
+        case d == 0:
+            pontos += 1
+        default:
+            pontos += 3
+        }
+    }
+    return pontos
+}
+~~~`,
+
+        7: `~~~
+func BubbleSort(diferenca []int) {
+    n := len(diferenca)
+    for i := 0; i < n-1; i++ {
+        for j := 0; j < n-1-i; j++ {
+            if diferenca[j] > diferenca[j+1] {
+                diferenca[j], diferenca[j+1] = diferenca[j+1], diferenca[j]
+            }
+        }
+    }
+}
+~~~
+
+Cada passagem pelo slice compara vizinhos e troca-os se estiverem na ordem errada, empurrando gradualmente o maior valor para o fim. n-1-i reduz o alcance a cada passagem, porque os últimos i elementos já ficaram ordenados nas voltas anteriores.`,
+      },
     },
   ],
 };
