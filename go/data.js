@@ -227,6 +227,191 @@ gofmt -w .
 
 O primeiro comando lista, sem alterar nada, os ficheiros .go cujo formato não segue a convenção oficial. O segundo aplica essa formatação diretamente. A maioria dos editores, como o VS Code com a extensão de Go, faz isto sozinho sempre que gravas o ficheiro.`,
       },
+      livro: `Este capítulo cobre o que qualquer programa Go precisa, antes mesmo de chegares a um struct. Não é um resumo dos 15 exercícios: é o porquê por trás deles, escrito para leres de seguida, sem precisares de saltar para a documentação oficial a meio.
+
+## O ponto de entrada de um programa
+
+Todo o ficheiro Go começa com uma declaração de pacote. Um programa executável, dos que corres diretamente, tem sempre package main num ficheiro que também define func main(), a função por onde a execução arranca.
+
+~~~
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World")
+}
+~~~
+
+Repara em três coisas. Primeiro, package main não é decoração: é o que diz ao compilador "isto produz um binário", ao contrário de um pacote de biblioteca, que outros programas importam mas que nunca corre sozinho. Segundo, import "fmt" traz o pacote de formatação da standard library, e é obrigatório: Go não deixa importar algo e não usar, o compilador recusa-se a compilar. Terceiro, a chaveta de func main() { abre logo na mesma linha; Go tem uma única forma aceite de formatar chavetas, e gofmt trata disso por ti, como vais ver no fim deste capítulo.
+
+go run ficheiro.go compila para um binário temporário, corre-o, e apaga-o a seguir, tudo num único comando, o que é ótimo durante o desenvolvimento. go build ficheiro.go faz só a primeira parte: gera um binário que fica no disco, pronto a ser distribuído ou corrido depois, sem precisar do código-fonte nem do compilador instalado na máquina que o vai correr. Esta é uma das razões por que Go é popular para ferramentas de linha de comandos: um único binário, sem dependências externas a instalar.
+
+## Três formas de declarar uma variável
+
+Go tem três formas de declarar uma variável, e a escolha entre elas não é estética, diz alguma coisa a quem lê o código.
+
+~~~
+var x int = 5   // forma completa: tipo explícito, valor explícito
+var y = 5       // tipo inferido a partir do valor
+z := 5          // short declaration, só dentro de funções
+~~~
+
+var x int = 5 é a forma mais explícita, e usa-se sobretudo quando o tipo que queres não é o que Go infere por omissão, ou quando declaras a variável sem lhe dares valor logo (nesse caso, ela fica com o valor zero do tipo: 0 para números, "" para strings, false para bool, nil para ponteiros e interfaces). var y = 5 deixa o compilador inferir o tipo a partir do valor à direita, e usa-se quando o tipo é óbvio pelo contexto. z := 5 é a forma mais usada dentro de funções, e combina declaração com atribuição numa única instrução; não funciona fora de funções, ao nível do pacote, onde só var é permitido.
+
+Na prática, o código Go idiomático usa := quase sempre dentro de funções, e reserva var para os casos em que precisas do tipo explícito, do valor zero, ou de declarar ao nível do pacote.
+
+## Os tipos básicos
+
+~~~
+var i int = 10
+var f float64 = 3.14
+var s string = "texto"
+var b bool = true
+var r rune = 'A'
+var by byte = 255
+~~~
+
+int é o inteiro nativo da tua arquitetura, normalmente 64 bits numa máquina moderna, e é o que usas por omissão, a não ser que tenhas uma razão específica para escolheres int32, int64, uint, ou outro dos tipos numéricos com tamanho fixo. float64 é o tipo de vírgula flutuante por omissão; float32 existe, mas raramente compensa a perda de precisão só para poupares memória.
+
+string em Go é uma sequência imutável de bytes, normalmente texto UTF-8. rune é um pseudónimo de int32, e representa um ponto de código Unicode: quando percorres uma string com range, cada elemento que recebes é um rune, não um byte, o que importa assim que o texto tem acentos ou outros carateres fora do ASCII. byte é um pseudónimo de uint8, e é o que obténs ao converteres uma string para []byte.
+
+fmt.Printf("%T", valor) imprime o tipo dinâmico de um valor, e é a forma mais rápida de confirmares que tipo o compilador atribuiu a algo que declaraste com :=.
+
+## Constantes e iota
+
+const declara um valor que não muda depois de definido, e que o compilador consegue verificar em tempo de compilação, ao contrário de uma variável.
+
+~~~
+const IVA = 0.16
+
+const (
+    Segunda = iota // 0
+    Terca           // 1
+    Quarta          // 2
+    Quinta          // 3
+    Sexta           // 4
+)
+~~~
+
+Dentro de um bloco const ( ... ), iota começa em 0 e soma 1 a cada linha nova, mesmo que não o escrevas explicitamente nas linhas seguintes. É o mecanismo idiomático de Go para sequências deste tipo, dias da semana, estados, níveis, e substitui o que noutras linguagens seria um enum dedicado, que Go não tem como construção própria da linguagem.
+
+## Operadores e o cuidado com a divisão
+
+Os operadores aritméticos, de comparação e lógicos são os habituais: + - * / % para aritmética, == != < > <= >= para comparação, && || ! para lógica. O que apanha muita gente de outras linguagens de guarda é a divisão inteira.
+
+~~~
+fmt.Println(7 / 2)     // 3, divisão inteira: a parte decimal é descartada
+fmt.Println(7.0 / 2)   // 3.5, porque pelo menos um dos operandos é float64
+fmt.Println(7 % 2)     // 1, o resto da divisão inteira
+~~~
+
+Quando os dois operandos de / são inteiros, o resultado é sempre inteiro, e a parte decimal é simplesmente descartada, não arredondada. Para obteres um resultado com casas decimais, pelo menos um dos dois números tem de ser float64, e Go não converte isso automaticamente por ti: 7 / 2.0 não compila sequer, se 7 for uma variável declarada como int, porque Go não mistura tipos numéricos diferentes numa operação sem uma conversão explícita.
+
+## Controlo de fluxo: if, switch, for
+
+O if em Go tem uma variante que aparece constantemente em código real: a forma com inicialização.
+
+~~~
+if n := calcular(); n > 0 {
+    fmt.Println("positivo:", n)
+}
+~~~
+
+A variável n só existe dentro do if, e do else que o acompanhar, se houver um. Este padrão é tão usado com erros, if err := fazerAlgo(); err != nil { ... }, que vale a pena habituares-te a ele já, porque vai aparecer em praticamente todas as funções que escreveres a partir do Bloco 3.
+
+switch em Go não precisa de break no fim de cada case, ao contrário de C ou Java: cada case termina sozinho, sem cair para o seguinte. Quando precisas mesmo desse comportamento de queda, existe a palavra-chave fallthrough, mas raramente é preciso.
+
+~~~
+switch {
+case idade < 12:
+    fmt.Println("criança")
+case idade < 18:
+    fmt.Println("adolescente")
+default:
+    fmt.Println("adulto")
+}
+~~~
+
+Um switch sem valor a seguir à palavra switch, como o exemplo acima, testa uma condição booleana em cada case, e é equivalente a uma cadeia de if / else if, muitas vezes mais legível.
+
+Go tem um único formato de loop, for, que serve para os três papéis que noutras linguagens seriam for, while e um loop infinito.
+
+~~~
+for i := 0; i < 10; i++ { }   // o for clássico, com inicialização, condição e passo
+for n > 0 { }                  // só a condição: o equivalente a um while
+for { }                        // sem nada: infinito, até um break
+~~~
+
+## Funções: retornos múltiplos, nomeados e variádicos
+
+Uma função em Go pode devolver mais do que um valor, o que é usado constantemente para devolver um resultado e um erro lado a lado.
+
+~~~
+func dividir(a, b int) (int, int) {
+    return a / b, a % b
+}
+
+q, r := dividir(17, 5)
+~~~
+
+Quando os valores de retorno têm nome na assinatura, chamam-se named return values, e já existem, com o valor zero do respetivo tipo, assim que a função começa a correr.
+
+~~~
+func dividir(a, b int) (q, r int) {
+    q = a / b
+    r = a % b
+    return
+}
+~~~
+
+Um return sozinho, sem argumentos, devolve o que estiver guardado nas variáveis nomeadas nesse momento. Isto compensa quando os nomes tornam a assinatura mais clara, mas usado em excesso, sobretudo em funções longas, pode esconder de onde vem cada valor.
+
+Uma função variádica aceita um número variável de argumentos do mesmo tipo, marcados com ... antes do tipo.
+
+~~~
+func soma(numeros ...int) int {
+    total := 0
+    for _, n := range numeros {
+        total += n
+    }
+    return total
+}
+
+soma(1, 2, 3) // 6
+soma()        // 0
+~~~
+
+Dentro da função, numeros comporta-se como um []int normal. fmt.Println é a função variádica mais usada em Go, e é por isso que aceita quantos argumentos quiseres.
+
+## Ponteiros
+
+Um ponteiro guarda o endereço de memória de um valor, não o valor em si.
+
+~~~
+x := 5
+fmt.Println(&x) // endereço de memória de x
+
+p := &x    // p é um ponteiro para x
+*p = 10    // altera o valor de x através do ponteiro
+
+fmt.Println(x) // 10
+~~~
+
+& aplicado a uma variável devolve o seu endereço. * aplicado a um ponteiro acede, ou altera, o valor guardado nesse endereço, o que se chama dereferenciar. Isto é a base de um dos conceitos mais importantes do resto da trilha, a diferença entre pointer receiver e value receiver nos métodos, que vais ver já no Bloco 1: um método com pointer receiver recebe o endereço do struct original e pode alterá-lo; um método com value receiver recebe uma cópia, e qualquer alteração feita lá dentro desaparece assim que o método termina.
+
+## gofmt: a formatação deixa de ser conversa
+
+Go vem com uma ferramenta de formatação oficial, gofmt, e a comunidade segue-a sem exceção. Não há guerra de tabs contra espaços, nem de chaveta na mesma linha ou na linha seguinte: gofmt decide, e todo o código Go que vês em qualquer projeto sério está formatado da mesma maneira.
+
+~~~
+gofmt -l .
+gofmt -w .
+~~~
+
+gofmt -l . lista, sem alterar nada, os ficheiros cujo formato não segue a convenção. gofmt -w . aplica a formatação diretamente. Na prática, quase ninguém corre estes comandos à mão o dia todo: configuras o editor para formatar ao gravar, e esqueces que a decisão alguma vez foi tua.
+
+A partir daqui, o Bloco 1 introduz structs e methods, as duas construções que substituem o que noutras linguagens seria orientação a objetos com classes e herança. Tudo o que viste aqui, variáveis, tipos, funções e sobretudo ponteiros, volta a aparecer, agora aplicado a tipos que tu próprio defines.`,
     },
     {
       id: "b1",

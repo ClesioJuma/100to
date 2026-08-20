@@ -29,6 +29,9 @@ const ICON_CHECKLIST =
 const ICON_HINT =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .8 1.7V16h6.4v-.8c0-.7.3-1.2.8-1.7A6 6 0 0 0 12 3Z"/></svg>';
 
+const ICON_LIVRO =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5.5A2.5 2.5 0 0 1 6.5 3H12v18H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M12 3h5.5A2.5 2.5 0 0 1 20 5.5v14a2.5 2.5 0 0 1-2.5 2.5H12"/><path d="M8 8h2M8 12h2"/></svg>';
+
 const THEME_KEY = "100to:theme";
 const ENTRY_KEY = "100to:entrada";
 
@@ -133,25 +136,46 @@ function formatEnunciado(texto) {
   return out;
 }
 
-/* Dicas: explicação com exemplo, escrita à mão por exercício, para quem
-   quer resolver sem sair da app. Os recursos externos continuam a existir
-   ao lado, mas deixam de ser o único caminho. O texto usa ~~~ para marcar
-   um bloco de código no meio da prosa, ao estilo Markdown mínimo (evita
-   crases, para os textos poderem ser escritos como template literals). */
-function renderDicaHTML(texto) {
+/* Prosa com blocos de código: a base partilhada por dicas e livros.
+   O texto usa ~~~ para marcar um bloco de código no meio da prosa, ao
+   estilo Markdown mínimo (evita crases, para os textos poderem ser
+   escritos como template literals em JS sem escapar nada). Com
+   headings ativo, uma linha que comece por "## " vira um título de
+   secção em vez de um parágrafo normal. */
+function renderProsaComCodigo(texto, { headings = false, codeClass = "dica-codigo" } = {}) {
   const partes = texto.split(/~~~([\s\S]*?)~~~/);
   return partes
     .map((parte, i) => {
       if (i % 2 === 1) {
-        return `<pre class="dica-codigo"><code>${escapeHtml(parte.trim())}</code></pre>`;
+        return `<pre class="${codeClass}"><code>${escapeHtml(parte.trim())}</code></pre>`;
       }
       return parte
         .split(/\n{2,}/)
         .filter((p) => p.trim())
-        .map((p) => `<p>${formatEnunciado(p.trim())}</p>`)
+        .map((p) => {
+          const t = p.trim();
+          if (headings && t.startsWith("## ")) {
+            return `<h4 class="livro-secao">${formatEnunciado(t.slice(3).trim())}</h4>`;
+          }
+          return `<p>${formatEnunciado(t)}</p>`;
+        })
         .join("");
     })
     .join("");
+}
+
+/* Dicas: explicação com exemplo, escrita à mão por exercício, para quem
+   quer resolver sem sair da app. Os recursos externos continuam a existir
+   ao lado, mas deixam de ser o único caminho. */
+function renderDicaHTML(texto) {
+  return renderProsaComCodigo(texto);
+}
+
+/* Livro: o capítulo de documentação de um bloco inteiro. Mais longo e
+   organizado em secções, para quem quer perceber o porquê antes, ou em
+   vez, de ir direto aos exercícios. */
+function renderLivroHTML(texto) {
+  return renderProsaComCodigo(texto, { headings: true, codeClass: "livro-codigo" });
 }
 
 function systemPrefersLight() {
@@ -657,7 +681,32 @@ function renderBlocoContent(nivel, trilha, bloco) {
     <p class="bloco-faixa">${bloco.faixa}</p>
     <p class="bloco-desc">${formatEnunciado(bloco.descricao)}</p>
   `;
+
+  if (bloco.livro) {
+    const livroBtn = document.createElement("button");
+    livroBtn.className = "livro-toggle-btn";
+    livroBtn.title = "Ler o capítulo deste bloco";
+    livroBtn.innerHTML = ICON_LIVRO + "<span>Livro</span>";
+    livroBtn.onclick = () => {
+      const painel = document.getElementById("livro-painel");
+      const aberto = painel.classList.toggle("aberto");
+      livroBtn.classList.toggle("ativo", aberto);
+    };
+    header.appendChild(livroBtn);
+  }
+
   contentEl.appendChild(header);
+
+  if (bloco.livro) {
+    const livroPainel = document.createElement("div");
+    livroPainel.id = "livro-painel";
+    livroPainel.className = "livro-painel";
+    livroPainel.innerHTML = `
+      <div class="livro-cabecalho">${ICON_LIVRO}<span>Capítulo ${blocoNumero(bloco)}</span></div>
+      <div class="livro-corpo">${renderLivroHTML(bloco.livro)}</div>
+    `;
+    contentEl.appendChild(livroPainel);
+  }
 
   const relacionados = renderRelacionados(bloco);
   if (relacionados) contentEl.appendChild(relacionados);
