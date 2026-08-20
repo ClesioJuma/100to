@@ -1,0 +1,197 @@
+/* Página de entrada. Reutiliza os tokens de style.css. */
+
+body.landing {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.lp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s5) var(--s6);
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.lp-mark {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.lp-main { max-width: 1080px; margin: 0 auto; padding: 0 var(--s6) var(--s12); }
+
+/* ---------- Hero ---------- */
+
+.lp-hero { padding: var(--s10) 0 var(--s8); }
+.lp-hero h1 {
+  margin: 0 0 var(--s5);
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+.lp-sub {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--fs-lg);
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.lp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s8);
+  margin-top: var(--s8);
+  padding-top: var(--s6);
+  border-top: 1px solid var(--border);
+}
+.lp-stats div { display: flex; flex-direction: column; }
+.lp-stats strong {
+  font-family: var(--mono);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  color: var(--brand);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.lp-stats span { font-size: var(--fs-xs); color: var(--text-mute); margin-top: 2px; }
+
+/* ---------- Cartões de trilha ---------- */
+
+.lp-trilhas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--s5);
+  margin: var(--s10) 0;
+}
+
+.lp-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.lp-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--brand-line); }
+.lp-card:active { transform: translateY(-1px); }
+
+.lp-card-top { display: flex; align-items: center; gap: var(--s4); margin-bottom: var(--s5); }
+.lp-card-top img { flex-shrink: 0; object-fit: contain; }
+.lp-card h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+.lp-card-nome { color: var(--brand); }
+.lp-card-tag { margin: 2px 0 0; font-size: var(--fs-sm); color: var(--text-mute); }
+
+.lp-card-desc {
+  margin: 0 0 var(--s5);
+  font-size: var(--fs-base);
+  line-height: 1.65;
+  color: var(--text-dim);
+  flex: 1;
+}
+
+.lp-card-niveis { list-style: none; margin: 0 0 var(--s5); padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.lp-card-niveis li {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+}
+.lp-card-niveis em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+}
+.lp-nivel-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: var(--mono);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+}
+
+.lp-card-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+.lp-card-prog { flex: 1; display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.lp-card-prog .progress-bar { flex: 1; }
+.lp-card-prog span {
+  font-size: var(--fs-2xs);
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lp-card-cta {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--brand);
+  white-space: nowrap;
+}
+.lp-card-cta::after { content: " →"; }
+
+/* ---------- Como funciona ---------- */
+
+.lp-como { padding-top: var(--s8); border-top: 1px solid var(--border); }
+.lp-como h3 {
+  margin: 0 0 var(--s6);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-mute);
+}
+.lp-como-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--s6);
+}
+.lp-como-grid h4 { margin: 0 0 var(--s2); font-size: var(--fs-base); font-weight: 600; }
+.lp-como-grid p { margin: 0; font-size: var(--fs-sm); line-height: 1.65; color: var(--text-dim); }
+
+.lp-footer {
+  margin-top: var(--s12);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+}
+.lp-footer a { color: var(--brand); text-decoration: none; }
+.lp-footer a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .lp-header, .lp-main { padding-left: var(--s4); padding-right: var(--s4); }
+  .lp-hero { padding: var(--s6) 0 var(--s5); }
+  .lp-hero h1 br { display: none; }
+  .lp-sub { font-size: var(--fs-base); }
+  .lp-stats { gap: var(--s6); margin-top: var(--s6); }
+  .lp-stats strong { font-size: var(--fs-xl); }
+  .lp-trilhas { grid-template-columns: 1fr; margin: var(--s6) 0; }
+  .lp-card { padding: var(--s5); }
+}

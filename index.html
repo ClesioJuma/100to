@@ -3,58 +3,124 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>100toGo — Trilha Go</title>
-<link rel="icon" type="image/png" href="golang.png">
+<title>100to — trilhas de engenharia de backend</title>
+<meta name="description" content="Duas trilhas de exercícios, do primeiro struct ao desenho de sistemas à escala. Progresso guardado no teu browser.">
+<link rel="icon" type="image/svg+xml" href="icon-100to.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="landing.css">
 <script>
   (function () {
-    var saved = localStorage.getItem("100toGo:theme");
+    var saved = localStorage.getItem("100to:theme");
     if (saved === "light" || saved === "dark") {
       document.documentElement.setAttribute("data-theme", saved);
     }
   })();
 </script>
 </head>
-<body>
-<header class="app-header">
-  <div class="brand">
-    <img class="brand-logo" src="golang.png" alt="Go">
-    <div>
-      <h1>100<span class="brand-accent">to</span></h1>
-      <p class="tagline">Do primeiro struct ao desenho de sistemas à escala</p>
-    </div>
-    <nav class="eixo-tabs" id="eixo-tabs" aria-label="Eixo de aprendizagem"></nav>
-  </div>
-  <div class="overall-progress">
-    <div class="overall-progress-text">
-      <span id="overall-count">0 / 0</span>
-      <span class="overall-progress-pct" id="overall-pct">0%</span>
-    </div>
-    <div class="progress-bar">
-      <div class="progress-fill" id="overall-fill"></div>
-    </div>
-    <p class="overall-motivation" id="overall-motivation"></p>
-  </div>
-  <div class="header-actions">
-    <button id="theme-toggle" class="icon-btn" title="Alternar tema"></button>
-    <button id="reset-btn" class="reset-btn" title="Reiniciar todo o progresso">Reiniciar progresso</button>
-  </div>
+<body class="landing">
+
+<header class="lp-header">
+  <span class="lp-mark">100<span class="brand-accent">to</span></span>
+  <button id="theme-toggle" class="icon-btn" title="Alternar tema"></button>
 </header>
 
-<nav class="nivel-tabs" id="nivel-tabs"></nav>
-<div class="nivel-nota" id="nivel-nota" hidden></div>
-<nav class="trilha-tabs" id="trilha-tabs"></nav>
+<main class="lp-main">
 
-<main class="layout">
-  <aside class="sidebar" id="sidebar"></aside>
-  <section class="content" id="content"></section>
+  <section class="lp-hero">
+    <h1>Duas trilhas para chegar <br><span class="brand-accent">a engenheiro de backend</span></h1>
+    <p class="lp-sub">
+      Uma para escrever o código, outra para desenhar o sistema. Cada uma dividida em três
+      níveis, de iniciante a sénior, com exercícios explícitos em vez de tópicos vagos.
+    </p>
+    <div class="lp-stats">
+      <div><strong id="lp-total">470</strong><span>exercícios</span></div>
+      <div><strong>6</strong><span>níveis</span></div>
+      <div><strong>58</strong><span>blocos</span></div>
+      <div><strong>0€</strong><span>e sem conta</span></div>
+    </div>
+  </section>
+
+  <section class="lp-trilhas" aria-label="Escolhe uma trilha">
+
+    <a class="lp-card lp-card-go" href="go/">
+      <div class="lp-card-top">
+        <img src="golang.png" alt="" width="52" height="52">
+        <div>
+          <h2>100to<span class="lp-card-nome">Go</span></h2>
+          <p class="lp-card-tag">Escrever o código</p>
+        </div>
+      </div>
+      <p class="lp-card-desc">
+        Do primeiro <code>struct</code> ao sistema distribuído com observabilidade e Kubernetes.
+        Cada exercício diz o que fazer e porquê, e cada bloco diz o que instalar antes de começar.
+      </p>
+      <ul class="lp-card-niveis">
+        <li><span class="lp-nivel-n">1</span> Iniciante <em>149 exercícios</em></li>
+        <li><span class="lp-nivel-n">2</span> Pleno <em>110 exercícios</em></li>
+        <li><span class="lp-nivel-n">3</span> Sénior <em>95 exercícios</em></li>
+      </ul>
+      <div class="lp-card-foot">
+        <div class="lp-card-prog"><div class="progress-bar"><div class="progress-fill" id="prog-go"></div></div><span id="prog-go-txt">0 / 354</span></div>
+        <span class="lp-card-cta">Abrir trilha</span>
+      </div>
+    </a>
+
+    <a class="lp-card lp-card-sd" href="system-design/">
+      <div class="lp-card-top">
+        <img src="icon-system-design.svg" alt="" width="52" height="52">
+        <div>
+          <h2>100to<span class="lp-card-nome">SystemDesign</span></h2>
+          <p class="lp-card-tag">Desenhar o sistema</p>
+        </div>
+      </div>
+      <p class="lp-card-desc">
+        De um pedido HTTP à escala global: caching, sharding, multi-região e sistemas
+        ponta a ponta. Resolve-se com papel e caneta, sem instalar nada.
+      </p>
+      <ul class="lp-card-niveis">
+        <li><span class="lp-nivel-n">1</span> Júnior <em>24 exercícios</em></li>
+        <li><span class="lp-nivel-n">2</span> Pleno <em>44 exercícios</em></li>
+        <li><span class="lp-nivel-n">3</span> Sénior <em>48 exercícios</em></li>
+      </ul>
+      <div class="lp-card-foot">
+        <div class="lp-card-prog"><div class="progress-bar"><div class="progress-fill" id="prog-sd"></div></div><span id="prog-sd-txt">0 / 116</span></div>
+        <span class="lp-card-cta">Abrir trilha</span>
+      </div>
+    </a>
+
+  </section>
+
+  <section class="lp-como">
+    <h3>Como funciona</h3>
+    <div class="lp-como-grid">
+      <div>
+        <h4>Um bloco de cada vez</h4>
+        <p>Cada bloco só abre quando o anterior estiver concluído. Se já dominas os temas de um nível, podes entrar diretamente nele e a escolha fica registada.</p>
+      </div>
+      <div>
+        <h4>Diz-te o que preparar</h4>
+        <p>Cada bloco abre com o que precisas de ter instalado. Os poucos exercícios que podem custar dinheiro dizem-no à partida, e são saltáveis.</p>
+      </div>
+      <div>
+        <h4>As trilhas conversam</h4>
+        <p>O bloco de caching em System Design aponta para o projeto de Redis em Go. Uma explica o porquê, a outra põe as mãos na massa.</p>
+      </div>
+      <div>
+        <h4>O progresso é teu</h4>
+        <p>Fica guardado no teu browser, sem conta e sem servidor. Como é local, não passa de um dispositivo para outro.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="lp-footer">
+    <p>Sem registo, sem recolha de dados. <a href="https://github.com/ClesioJuma/100to" target="_blank" rel="noopener noreferrer">Código no GitHub</a>.</p>
+  </footer>
+
 </main>
 
-<script src="data.js"></script>
-<script src="data-systemdesign.js"></script>
-<script src="app.js"></script>
+<script src="landing.js"></script>
 </body>
 </html>

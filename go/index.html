@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>100toGo — trilha de Go</title>
+<meta name="description" content="354 exercícios de Go em 3 níveis, do primeiro struct ao sistema distribuído.">
+<link rel="icon" type="image/png" href="../golang.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../style.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem("100to:theme");
+    if (saved === "light" || saved === "dark") {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+  })();
+</script>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <a class="brand-home" href="../" title="Voltar ao 100to">100to</a>
+    <img class="brand-logo" id="app-logo" src="../golang.png" alt="Go">
+    <div>
+      <h1 id="app-nome">Go</h1>
+      <p class="tagline" id="app-tagline"></p>
+    </div>
+  </div>
+  <div class="overall-progress">
+    <div class="overall-progress-text">
+      <span id="overall-count">0 / 0</span>
+      <span class="overall-progress-pct" id="overall-pct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="overall-fill"></div>
+    </div>
+    <p class="overall-motivation" id="overall-motivation"></p>
+  </div>
+  <div class="header-actions">
+    <a class="link-outro" id="link-outro" href="../system-design/">System Design</a>
+    <button id="theme-toggle" class="icon-btn" title="Alternar tema"></button>
+    <button id="reset-btn" class="reset-btn" title="Reiniciar todo o progresso">Reiniciar progresso</button>
+  </div>
+</header>
+
+<nav class="nivel-tabs" id="nivel-tabs"></nav>
+<div class="nivel-nota" id="nivel-nota" hidden></div>
+<nav class="trilha-tabs" id="trilha-tabs"></nav>
+
+<main class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <section class="content" id="content"></section>
+</main>
+
+<script src="data.js"></script>
+<script src="../app.js"></script>
+</body>
+</html>

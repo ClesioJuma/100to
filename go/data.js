@@ -1,3 +1,12 @@
+// 100toGo — eixo Go. Configuração da app e conteúdo das trilhas.
+const APP = {
+  id: "go",
+  nome: "Go",
+  tagline: "Do primeiro struct ao sistema distribuído",
+  icone: "../golang.png",
+  outro: { nome: "System Design", href: "../system-design/" },
+};
+
 // Dados das duas trilhas Go — gerados a partir dos ficheiros markdown originais.
 const TRILHA_PRINCIPAL = {
   id: "principal",
@@ -1081,7 +1090,7 @@ const GUIAS = {
 // Níveis
 // ---------------------------------------------------------------------------
 
-const NIVEIS_GO = [
+const NIVEIS = [
   {
     id: "n1",
     titulo: "Nível 1",
@@ -1106,4 +1115,4 @@ const NIVEIS_GO = [
   },
 ];
 
-const GUIAS_GO = GUIAS;
+

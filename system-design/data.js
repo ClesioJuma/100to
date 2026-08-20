@@ -1,3 +1,12 @@
+// 100toSystemDesign — eixo System Design. Configuração da app e conteúdo.
+const APP = {
+  id: "sd",
+  nome: "System Design",
+  tagline: "De um pedido HTTP à escala global",
+  icone: "../icon-system-design.svg",
+  outro: { nome: "Go", href: "../go/" },
+};
+
 // Eixo System Design — independente do eixo Go, com a mesma estrutura de níveis.
 
 const REC_PRIMER = { label: "System Design Primer", url: "https://github.com/donnemartin/system-design-primer" };
@@ -373,9 +382,9 @@ const SD_N3 = {
   ],
 };
 
-const NIVEIS_SD = [SD_N1, SD_N2, SD_N3];
+const NIVEIS = [SD_N1, SD_N2, SD_N3];
 
-const GUIAS_SD = {
+const GUIAS = {
   sd1: { precisas: ["Papel e caneta, ou um quadro branco digital como o Excalidraw"], nota: "Todos os exercícios deste eixo se resolvem a desenhar e a escrever. Não é preciso instalar nem programar nada." },
   sd2: { precisas: ["Papel e caneta, ou uma ferramenta de diagramas"] },
   sd3: { precisas: ["Papel e caneta"], nota: "Se quiseres experimentar em vez de só desenhar, o Bloco 15 do eixo Go levanta uma base de dados real com Docker." },

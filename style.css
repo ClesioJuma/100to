@@ -1,5 +1,5 @@
 /* =========================================================================
-   100toGo — sistema visual
+   100to — sistema visual partilhado pelas duas trilhas
    Flat design, tipografia Fira Sans + Fira Code, cor de marca do Go.
    ========================================================================= */
 
@@ -185,6 +185,39 @@ code {
 }
 
 .brand { display: flex; align-items: center; gap: var(--s3); }
+
+/* Volta à porta de entrada, e atalho para a outra trilha */
+.brand-home {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 var(--s3);
+  border-right: 1px solid var(--border);
+  padding-right: var(--s4);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease);
+}
+.brand-home:hover { color: var(--brand); }
+
+.link-outro {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 var(--s4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.link-outro::before { content: "↔"; margin-right: var(--s2); opacity: 0.7; }
+.link-outro:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
 .brand-logo { width: 34px; height: 34px; object-fit: contain; }
 .brand h1 {
   margin: 0;
@@ -201,40 +234,6 @@ code {
   line-height: 1.3;
 }
 
-/* Seletor de eixo: junto à marca, para "100to" + "Go" se ler como um todo */
-.eixo-tabs {
-  display: flex;
-  gap: 2px;
-  margin-left: var(--s3);
-  padding: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-}
-.eixo-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-  padding: var(--s2) var(--s4);
-  min-height: 38px;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  border-radius: var(--r-sm);
-  cursor: pointer;
-  color: var(--text-dim);
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.eixo-tab:hover { color: var(--text); background: var(--surface-hover); }
-.eixo-tab.active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow); }
-.eixo-tab-nome { font-size: var(--fs-base); font-weight: 600; line-height: 1.2; }
-.eixo-tab-sub {
-  font-size: var(--fs-2xs);
-  color: var(--text-mute);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.3;
-}
 
 .overall-progress { flex: 1; min-width: 260px; max-width: 460px; }
 .overall-progress-text {
@@ -1036,9 +1035,8 @@ code {
   .brand h1 { font-size: var(--fs-md); }
   .tagline { display: none; }
   .brand { flex: 1; }
-  .eixo-tabs { margin-left: auto; }
-  .eixo-tab { padding: var(--s2) var(--s3); }
-  .eixo-tab-nome { font-size: var(--fs-sm); }
+  .brand-home { padding-left: 0; }
+  .link-outro { padding: 0 var(--s3); font-size: var(--fs-xs); }
 
   .nivel-tabs { padding: var(--s2) var(--s4); gap: var(--s2); }
   .nivel-tab { padding: var(--s2) var(--s3); }
