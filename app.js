@@ -32,8 +32,22 @@ const ICON_HINT =
 const ICON_LIVRO =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5.5A2.5 2.5 0 0 1 6.5 3H12v18H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M12 3h5.5A2.5 2.5 0 0 1 20 5.5v14a2.5 2.5 0 0 1-2.5 2.5H12"/><path d="M8 8h2M8 12h2"/></svg>';
 
+const ICON_CHAT =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>';
+
+const ICON_CORRIGIR =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
+
 const THEME_KEY = "100to:theme";
 const ENTRY_KEY = "100to:entrada";
+const NOTAS_KEY = "100to:notas";
+
+// Piloto: chat de dúvidas e correção com IA, só disponível para estes blocos
+// (têm solução de referência escrita em /api/_ref) e só quando o site corre
+// num domínio com as serverless functions da Vercel — o GitHub Pages é
+// puramente estático e não as tem.
+const BLOCOS_COM_CORRECAO_IA = ["b0"];
+const API_DISPONIVEL = !/github\.io$/.test(location.hostname);
 
 /* ---------------------------------------------------------------------------
    Realce de código nos enunciados.
@@ -212,6 +226,7 @@ renderThemeToggle();
 
 let progress = loadProgress();
 let entradas = loadEntradas();
+let notas = loadNotas();
 // Arranca no nível de entrada escolhido para este eixo, não sempre no primeiro.
 let currentNivel = nivelEntrada();
 let currentTrilha = findNivel(currentNivel).trilhas[0].id;
@@ -273,6 +288,30 @@ function toggleDone(trilhaId, blocoId, idx) {
   renderAll();
 }
 
+// Notas do piloto de correção com IA. Mesma chave dos exercícios
+// (trilha:bloco:idx), guardadas à parte do progresso porque uma coisa é
+// teres marcado o exercício como feito, outra é teres sido corrigido.
+function loadNotas() {
+  try {
+    return JSON.parse(localStorage.getItem(NOTAS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveNotas() {
+  localStorage.setItem(NOTAS_KEY, JSON.stringify(notas));
+}
+
+function getNota(trilhaId, blocoId, idx) {
+  return notas[exKey(trilhaId, blocoId, idx)] || null;
+}
+
+function setNota(trilhaId, blocoId, idx, registo) {
+  notas[exKey(trilhaId, blocoId, idx)] = registo;
+  saveNotas();
+}
+
 function blocoStats(trilha, bloco) {
   const total = bloco.exercicios.length;
   let done = 0;
@@ -280,6 +319,36 @@ function blocoStats(trilha, bloco) {
     if (isDone(trilha.id, bloco.id, i)) done++;
   }
   return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+}
+
+// Nota média de um bloco: só conta os exercícios já corrigidos pela IA, não
+// os 15 todos, por isso vem sempre acompanhada de quantos já têm nota.
+function blocoNota(trilha, bloco) {
+  let soma = 0;
+  let corrigidos = 0;
+  for (let i = 0; i < bloco.exercicios.length; i++) {
+    const nota = getNota(trilha.id, bloco.id, i);
+    if (nota) {
+      soma += nota.nota;
+      corrigidos++;
+    }
+  }
+  return { media: corrigidos ? soma / corrigidos : null, corrigidos, total: bloco.exercicios.length };
+}
+
+function nivelNota(nivel) {
+  let soma = 0;
+  let corrigidos = 0;
+  let total = 0;
+  for (const trilha of nivel.trilhas) {
+    for (const bloco of trilha.blocos) {
+      const s = blocoNota(trilha, bloco);
+      soma += s.media !== null ? s.media * s.corrigidos : 0;
+      corrigidos += s.corrigidos;
+      total += s.total;
+    }
+  }
+  return { media: corrigidos ? soma / corrigidos : null, corrigidos, total };
 }
 
 function trilhaStats(trilha) {
@@ -412,11 +481,12 @@ function renderNiveis() {
   for (const nivel of NIVEIS) {
     const unlocked = isNivelUnlocked(nivel);
     const stats = nivelStats(nivel);
+    const nota = nivelNota(nivel);
     const tab = document.createElement("div");
     tab.className = "nivel-tab" + (nivel.id === currentNivel ? " active" : "") + (unlocked ? "" : " locked");
     tab.innerHTML = `
       <span class="nivel-tab-titulo">${nivel.titulo}${unlocked ? "" : ` <span class="nivel-tab-lock">${ICON_LOCK}</span>`}</span>
-      <span class="nivel-tab-sub">${nivel.subtitulo}${stats.total ? ` · ${stats.done}/${stats.total}` : ""}</span>
+      <span class="nivel-tab-sub">${nivel.subtitulo}${stats.total ? ` · ${stats.done}/${stats.total}` : ""}${nota.corrigidos ? ` · média ${nota.media.toFixed(1)}/10` : ""}</span>
     `;
     tab.onclick = () => {
       currentNivel = nivel.id;
@@ -670,6 +740,170 @@ function renderGuia(bloco) {
   return el;
 }
 
+// Histórico de chat por exercício. Vive só em memória (não em localStorage):
+// perde-se ao recarregar a página, mas as notas em si (que é o que importa
+// para o progresso) ficam guardadas em `notas`.
+const chatHistoricos = {};
+
+function criarPainelDuvida(trilha, bloco, idx, enunciado) {
+  const key = exKey(trilha.id, bloco.id, idx);
+  if (!chatHistoricos[key]) chatHistoricos[key] = [];
+  const historico = chatHistoricos[key];
+
+  const painel = document.createElement("div");
+  painel.className = "exercicio-duvida";
+  painel.onclick = (ev) => ev.stopPropagation();
+
+  const mensagensEl = document.createElement("div");
+  mensagensEl.className = "duvida-mensagens";
+
+  const inputEl = document.createElement("textarea");
+  inputEl.className = "duvida-input";
+  inputEl.rows = 2;
+  inputEl.placeholder = "Escreve a tua dúvida sobre este exercício...";
+
+  const enviarBtn = document.createElement("button");
+  enviarBtn.className = "duvida-enviar";
+  enviarBtn.textContent = "Enviar";
+
+  function renderMensagens() {
+    mensagensEl.innerHTML = "";
+    if (!historico.length) {
+      const vazio = document.createElement("p");
+      vazio.className = "duvida-vazio";
+      vazio.textContent = "Pergunta o que quiseres sobre este exercício. A IA ajuda a pensar, mas não te dá a resposta pronta.";
+      mensagensEl.appendChild(vazio);
+      return;
+    }
+    for (const m of historico) {
+      const bolha = document.createElement("div");
+      bolha.className = "duvida-bolha " + (m.papel === "user" ? "duvida-bolha-user" : "duvida-bolha-ia");
+      bolha.textContent = m.texto;
+      mensagensEl.appendChild(bolha);
+    }
+    mensagensEl.scrollTop = mensagensEl.scrollHeight;
+  }
+
+  async function enviar() {
+    const pergunta = inputEl.value.trim();
+    if (!pergunta || enviarBtn.disabled) return;
+    const historicoAntes = historico.slice();
+    inputEl.value = "";
+    historico.push({ papel: "user", texto: pergunta });
+    renderMensagens();
+    enviarBtn.disabled = true;
+    enviarBtn.textContent = "A pensar...";
+
+    try {
+      const resp = await fetch("/api/duvida", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blocoId: bloco.id,
+          exercicioIdx: idx,
+          enunciado,
+          dica: (bloco.dicas && bloco.dicas[idx]) || "",
+          pergunta,
+          historico: historicoAntes,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.erro || "Falha ao contactar a IA.");
+      historico.push({ papel: "ia", texto: data.resposta });
+    } catch (err) {
+      historico.push({ papel: "ia", texto: "Não consegui responder agora (" + err.message + "). Confirma a tua ligação à internet e tenta outra vez." });
+    }
+    renderMensagens();
+    enviarBtn.disabled = false;
+    enviarBtn.textContent = "Enviar";
+  }
+
+  enviarBtn.onclick = enviar;
+  inputEl.onkeydown = (ev) => {
+    if (ev.key === "Enter" && !ev.shiftKey) {
+      ev.preventDefault();
+      enviar();
+    }
+  };
+
+  const formEl = document.createElement("div");
+  formEl.className = "duvida-form";
+  formEl.appendChild(inputEl);
+  formEl.appendChild(enviarBtn);
+
+  painel.appendChild(mensagensEl);
+  painel.appendChild(formEl);
+  renderMensagens();
+  return painel;
+}
+
+function criarPainelCorrigir(trilha, bloco, idx, enunciado, aoAtualizarNota) {
+  const painel = document.createElement("div");
+  painel.className = "exercicio-corrigir";
+  painel.onclick = (ev) => ev.stopPropagation();
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "corrigir-input";
+  textarea.rows = 5;
+  textarea.placeholder = "Cola aqui a tua resposta ou código...";
+
+  const btn = document.createElement("button");
+  btn.className = "corrigir-enviar";
+  btn.textContent = "Corrigir";
+
+  const resultadoEl = document.createElement("div");
+  resultadoEl.className = "corrigir-resultado";
+  resultadoEl.hidden = true;
+
+  function renderResultado(registo) {
+    if (!registo) {
+      resultadoEl.hidden = true;
+      resultadoEl.innerHTML = "";
+      return;
+    }
+    resultadoEl.hidden = false;
+    resultadoEl.innerHTML = `
+      <span class="corrigir-nota${registo.correto ? " corrigir-nota-ok" : ""}">${registo.nota.toFixed(1)}/10</span>
+      <p class="corrigir-feedback">${escapeHtml(registo.feedback)}</p>
+    `;
+  }
+  renderResultado(getNota(trilha.id, bloco.id, idx));
+
+  async function corrigir() {
+    const resposta = textarea.value.trim();
+    if (!resposta || btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "A corrigir...";
+    resultadoEl.hidden = true;
+
+    try {
+      const resp = await fetch("/api/corrigir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocoId: bloco.id, exercicioIdx: idx, enunciado, resposta }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.erro || "Falha ao corrigir.");
+      const registo = { nota: data.nota, feedback: data.feedback, correto: data.correto, data: new Date().toISOString() };
+      setNota(trilha.id, bloco.id, idx, registo);
+      renderResultado(registo);
+      if (aoAtualizarNota) aoAtualizarNota();
+    } catch (err) {
+      resultadoEl.hidden = false;
+      resultadoEl.innerHTML = `<p class="corrigir-erro">Não consegui corrigir agora (${escapeHtml(err.message)}). Confirma a tua ligação à internet e tenta outra vez.</p>`;
+    }
+    btn.disabled = false;
+    btn.textContent = "Corrigir";
+  }
+
+  btn.onclick = corrigir;
+
+  painel.appendChild(textarea);
+  painel.appendChild(btn);
+  painel.appendChild(resultadoEl);
+  return painel;
+}
+
 function renderBlocoContent(nivel, trilha, bloco) {
   const contentEl = document.getElementById("content");
   const stats = blocoStats(trilha, bloco);
@@ -740,6 +974,28 @@ function renderBlocoContent(nivel, trilha, bloco) {
     <span class="bloco-progress-text">${stats.done} / ${stats.total} concluídos${stats.total > 0 && stats.done === stats.total ? " · bloco completo" : ""}</span>
   `;
   contentEl.appendChild(progressRow);
+
+  const iaDisponivel = API_DISPONIVEL && BLOCOS_COM_CORRECAO_IA.includes(bloco.id);
+  const blocoNotaEl = document.createElement("p");
+  blocoNotaEl.className = "bloco-nota";
+  blocoNotaEl.id = "bloco-nota";
+  function atualizarBlocoNotaUI() {
+    const n = blocoNota(trilha, bloco);
+    blocoNotaEl.hidden = n.corrigidos === 0;
+    blocoNotaEl.textContent = n.corrigidos
+      ? `Nota do bloco: ${n.media.toFixed(1)}/10 (${n.corrigidos}/${n.total} corrigidos)`
+      : "";
+    renderNiveis();
+  }
+  if (iaDisponivel) {
+    atualizarBlocoNotaUI();
+    contentEl.appendChild(blocoNotaEl);
+  } else if (BLOCOS_COM_CORRECAO_IA.includes(bloco.id) && !API_DISPONIVEL) {
+    const nota = document.createElement("p");
+    nota.className = "bloco-nota";
+    nota.innerHTML = `O chat de dúvidas e a correção com IA só estão disponíveis na versão <a href="https://100to-clesio-s-projects.vercel.app${location.pathname}" target="_blank" rel="noopener noreferrer">Vercel</a> deste site, não no GitHub Pages.`;
+    contentEl.appendChild(nota);
+  }
 
   const guia = renderGuia(bloco);
   if (guia) contentEl.appendChild(guia);
@@ -828,6 +1084,30 @@ function renderBlocoContent(nivel, trilha, bloco) {
         panel.appendChild(a);
       }
       panels.push(panel);
+    }
+
+    if (iaDisponivel) {
+      const duvidaBtn = document.createElement("button");
+      duvidaBtn.className = "exercicio-ia-btn exercicio-duvida-btn";
+      duvidaBtn.title = "Tirar uma dúvida sobre este exercício";
+      duvidaBtn.innerHTML = ICON_CHAT + "<span>Dúvidas</span>";
+      duvidaBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        item.classList.toggle("duvida-open");
+      };
+      row.appendChild(duvidaBtn);
+      panels.push(criarPainelDuvida(trilha, bloco, idx, texto));
+
+      const corrigirBtn = document.createElement("button");
+      corrigirBtn.className = "exercicio-ia-btn exercicio-corrigir-btn";
+      corrigirBtn.title = "Submeter a tua resposta e receber uma nota";
+      corrigirBtn.innerHTML = ICON_CORRIGIR + "<span>Corrigir</span>";
+      corrigirBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        item.classList.toggle("corrigir-open");
+      };
+      row.appendChild(corrigirBtn);
+      panels.push(criarPainelCorrigir(trilha, bloco, idx, texto, atualizarBlocoNotaUI));
     }
 
     item.appendChild(row);
