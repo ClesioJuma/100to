@@ -198,8 +198,8 @@ code {
 
 .skip-link {
   position: absolute;
-  left: var(--s4);
-  top: -100px;
+  top: var(--s4);
+  left: -9999px;
   z-index: 1000;
   background: var(--surface);
   color: var(--text);
@@ -208,10 +208,9 @@ code {
   border: 2px solid var(--brand);
   font-weight: 600;
   text-decoration: none;
-  transition: top var(--dur) var(--ease);
 }
 .skip-link:focus {
-  top: var(--s4);
+  left: var(--s4);
 }
 
 /* ============================ Cabeçalho ============================ */
