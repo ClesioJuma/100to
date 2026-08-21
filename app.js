@@ -9,7 +9,7 @@ const GUIAS_TODOS = GUIAS;
 const TRILHAS = NIVEIS.flatMap((n) => n.trilhas);
 
 const ICON_GRID =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
 
 const ICON_BOOK =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>';
@@ -21,16 +21,16 @@ const ICON_MOON =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>';
 
 const ICON_LOCK =
-  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>';
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>';
 
 const ICON_CHECKLIST =
-  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 7h8"/><path d="M13 17h8"/></svg>';
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 7h8"/><path d="M13 17h8"/></svg>';
 
 const ICON_HINT =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .8 1.7V16h6.4v-.8c0-.7.3-1.2.8-1.7A6 6 0 0 0 12 3Z"/></svg>';
 
 const ICON_LIVRO =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5.5A2.5 2.5 0 0 1 6.5 3H12v18H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M12 3h5.5A2.5 2.5 0 0 1 20 5.5v14a2.5 2.5 0 0 1-2.5 2.5H12"/><path d="M8 8h2M8 12h2"/></svg>';
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5.5A2.5 2.5 0 0 1 6.5 3H12v18H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M12 3h5.5A2.5 2.5 0 0 1 20 5.5v14a2.5 2.5 0 0 1-2.5 2.5H12"/><path d="M8 8h2M8 12h2"/></svg>';
 
 const ICON_CHAT =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>';
@@ -169,7 +169,7 @@ function renderProsaComCodigo(texto, { headings = false, codeClass = "dica-codig
         .map((p) => {
           const t = p.trim();
           if (headings && t.startsWith("## ")) {
-            return `<h4 class="livro-secao">${formatEnunciado(t.slice(3).trim())}</h4>`;
+            return `<h3 class="livro-secao">${formatEnunciado(t.slice(3).trim())}</h3>`;
           }
           return `<p>${formatEnunciado(t)}</p>`;
         })
@@ -206,7 +206,9 @@ function renderThemeToggle() {
   const btn = document.getElementById("theme-toggle");
   const theme = effectiveTheme();
   btn.innerHTML = theme === "dark" ? ICON_MOON : ICON_SUN;
-  btn.title = theme === "dark" ? "Mudar para modo claro" : "Mudar para modo escuro";
+  const rotulo = theme === "dark" ? "Mudar para modo claro" : "Mudar para modo escuro";
+  btn.title = rotulo;
+  btn.setAttribute("aria-label", rotulo);
 }
 
 document.getElementById("theme-toggle").addEventListener("click", () => {
@@ -970,6 +972,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
     const livroBtn = document.createElement("button");
     livroBtn.className = "livro-toggle-btn";
     livroBtn.title = "Ler o capítulo deste bloco";
+    livroBtn.setAttribute("aria-label", "Ler o capítulo deste bloco");
     livroBtn.innerHTML = ICON_LIVRO + "<span>Livro</span>";
     livroBtn.onclick = () => {
       const painel = document.getElementById("livro-painel");
@@ -1101,6 +1104,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
       const hintBtn = document.createElement("button");
       hintBtn.className = "exercicio-hint-btn";
       hintBtn.title = "Ver explicação com exemplo";
+      hintBtn.setAttribute("aria-label", "Ver explicação com exemplo para este exercício");
       hintBtn.innerHTML = ICON_HINT + "<span>Dica</span>";
       hintBtn.onclick = (ev) => {
         ev.stopPropagation();
@@ -1118,6 +1122,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
       const resBtn = document.createElement("button");
       resBtn.className = "exercicio-res-btn";
       resBtn.title = "Ver guias de estudo deste bloco";
+      resBtn.setAttribute("aria-label", "Ver guias de estudo deste bloco");
       resBtn.innerHTML = ICON_BOOK + "<span>Recursos</span>";
       resBtn.onclick = (ev) => {
         ev.stopPropagation();
@@ -1143,6 +1148,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
       const duvidaBtn = document.createElement("button");
       duvidaBtn.className = "exercicio-ia-btn exercicio-duvida-btn";
       duvidaBtn.title = "Tirar uma dúvida sobre este exercício";
+      duvidaBtn.setAttribute("aria-label", `Tirar uma dúvida sobre o exercício ${idx + 1}`);
       duvidaBtn.innerHTML = ICON_CHAT + "<span>Dúvidas</span>";
       duvidaBtn.onclick = (ev) => {
         ev.stopPropagation();
@@ -1154,6 +1160,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
       const corrigirBtn = document.createElement("button");
       corrigirBtn.className = "exercicio-ia-btn exercicio-corrigir-btn";
       corrigirBtn.title = "Submeter a tua resposta e receber uma nota";
+      corrigirBtn.setAttribute("aria-label", `Submeter a tua resposta ao exercício ${idx + 1} e receber uma nota`);
       corrigirBtn.innerHTML = ICON_CORRIGIR + "<span>Corrigir</span>";
       corrigirBtn.onclick = (ev) => {
         ev.stopPropagation();
