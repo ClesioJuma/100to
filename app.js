@@ -227,10 +227,33 @@ renderThemeToggle();
 let progress = loadProgress();
 let entradas = loadEntradas();
 let notas = loadNotas();
-// Arranca no nível de entrada escolhido para este eixo, não sempre no primeiro.
-let currentNivel = nivelEntrada();
-let currentTrilha = findNivel(currentNivel).trilhas[0].id;
-let currentBloco = OVERVIEW_ID;
+
+// Deep-linking: o estado (nível/trilha/bloco) vive também no hash do URL,
+// #/nivel/trilha/bloco, para permitir partilhar um link direto, recarregar
+// sem perder o sítio, e o botão recuar do browser funcionar dentro da app.
+function hashDoEstado(nivelId, trilhaId, blocoId) {
+  return `#/${nivelId}/${trilhaId}/${blocoId}`;
+}
+
+function estadoDoHash() {
+  const partes = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  if (partes.length < 3) return null;
+  const [nivelId, trilhaId, blocoId] = partes;
+  const nivel = findNivel(nivelId);
+  if (!nivel) return null;
+  const trilha = nivel.trilhas.find((t) => t.id === trilhaId);
+  if (!trilha) return null;
+  if (blocoId !== OVERVIEW_ID && !findBloco(trilha, blocoId)) return null;
+  return { nivelId, trilhaId, blocoId };
+}
+
+// Arranca no nível de entrada escolhido para este eixo, não sempre no primeiro,
+// exceto se o URL já apontar para um sítio específico (link partilhado, ou
+// recarregar a página a meio de um bloco).
+const estadoInicial = estadoDoHash();
+let currentNivel = estadoInicial ? estadoInicial.nivelId : nivelEntrada();
+let currentTrilha = estadoInicial ? estadoInicial.trilhaId : findNivel(currentNivel).trilhas[0].id;
+let currentBloco = estadoInicial ? estadoInicial.blocoId : OVERVIEW_ID;
 
 function loadProgress() {
   try {
@@ -456,12 +479,32 @@ function isBlocoUnlocked(trilha, bloco) {
   return s.total > 0 && s.done === s.total;
 }
 
+// Torna um elemento não-nativamente-interativo (div usada como tab/item de
+// lista) acessível por teclado: foco via Tab, ativação com Enter ou espaço.
+// Mesma ideia que já existia só nas linhas de exercício.
+function tornarClicavel(el, onActivate) {
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
+  el.onclick = onActivate;
+  el.onkeydown = (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      onActivate();
+    }
+  };
+}
+
 function navigateTo(nivelId, trilhaId, blocoId) {
   currentNivel = nivelId;
   currentTrilha = trilhaId;
   currentBloco = blocoId;
   renderAll();
   document.getElementById("content").scrollTo({ top: 0 });
+
+  const hash = hashDoEstado(nivelId, trilhaId, blocoId);
+  if (location.hash !== hash) {
+    history.pushState(null, "", hash);
+  }
 }
 
 function renderCabecalho() {
@@ -488,12 +531,12 @@ function renderNiveis() {
       <span class="nivel-tab-titulo">${nivel.titulo}${unlocked ? "" : ` <span class="nivel-tab-lock">${ICON_LOCK}</span>`}</span>
       <span class="nivel-tab-sub">${nivel.subtitulo}${stats.total ? ` · ${stats.done}/${stats.total}` : ""}${nota.corrigidos ? ` · média ${nota.media.toFixed(1)}/10` : ""}</span>
     `;
-    tab.onclick = () => {
+    tornarClicavel(tab, () => {
       currentNivel = nivel.id;
       currentTrilha = nivel.trilhas.length ? nivel.trilhas[0].id : null;
       currentBloco = OVERVIEW_ID;
       renderAll();
-    };
+    });
     el.appendChild(tab);
   }
   renderNivelNota();
@@ -534,7 +577,7 @@ function renderTabs() {
     const tab = document.createElement("div");
     tab.className = "trilha-tab" + (trilha.id === currentTrilha ? " active" : "");
     tab.textContent = trilha.titulo;
-    tab.onclick = () => navigateTo(nivel.id, trilha.id, OVERVIEW_ID);
+    tornarClicavel(tab, () => navigateTo(nivel.id, trilha.id, OVERVIEW_ID));
     tabsEl.appendChild(tab);
   }
 }
@@ -558,7 +601,7 @@ function renderSidebar() {
     <div class="sidebar-item-icon">${ICON_GRID}</div>
     <div class="sidebar-item-title">Visão geral</div>
   `;
-  overviewItem.onclick = () => navigateTo(nivel.id, trilha.id, OVERVIEW_ID);
+  tornarClicavel(overviewItem, () => navigateTo(nivel.id, trilha.id, OVERVIEW_ID));
   sidebarEl.appendChild(overviewItem);
 
   trilha.blocos.forEach((bloco) => {
@@ -571,7 +614,7 @@ function renderSidebar() {
       <div class="sidebar-item-title">${bloco.titulo}<span class="sidebar-item-faixa">${unlocked ? `${bloco.faixa} · ${stats.done}/${stats.total}` : "Bloqueado"}</span></div>
     `;
     if (!unlocked) item.title = "Conclui o bloco anterior para desbloquear";
-    item.onclick = () => navigateTo(nivel.id, trilha.id, bloco.id);
+    tornarClicavel(item, () => navigateTo(nivel.id, trilha.id, bloco.id));
     sidebarEl.appendChild(item);
   });
 }
@@ -778,7 +821,14 @@ function criarPainelDuvida(trilha, bloco, idx, enunciado) {
     for (const m of historico) {
       const bolha = document.createElement("div");
       bolha.className = "duvida-bolha " + (m.papel === "user" ? "duvida-bolha-user" : "duvida-bolha-ia");
-      bolha.textContent = m.texto;
+      const autor = document.createElement("span");
+      autor.className = "duvida-bolha-autor";
+      autor.textContent = m.papel === "user" ? "Tu" : "IA";
+      const texto = document.createElement("span");
+      texto.className = "duvida-bolha-texto";
+      texto.textContent = m.texto;
+      bolha.appendChild(autor);
+      bolha.appendChild(texto);
       mensagensEl.appendChild(bolha);
     }
     mensagensEl.scrollTop = mensagensEl.scrollHeight;
@@ -1172,3 +1222,22 @@ document.getElementById("reset-btn").addEventListener("click", () => {
 });
 
 renderAll();
+
+// Sincroniza o hash com o estado inicial (cobre o caso de não haver nenhum,
+// ou de ser inválido), sem criar uma entrada extra no histórico.
+const hashInicial = hashDoEstado(currentNivel, currentTrilha, currentBloco);
+if (location.hash !== hashInicial) {
+  history.replaceState(null, "", hashInicial);
+}
+
+// Botão recuar/avançar do browser: aplica o estado do hash sem voltar a
+// empurrá-lo para o histórico (já lá está, foi o próprio browser que mudou).
+window.addEventListener("popstate", () => {
+  const estado = estadoDoHash();
+  if (!estado) return;
+  currentNivel = estado.nivelId;
+  currentTrilha = estado.trilhaId;
+  currentBloco = estado.blocoId;
+  renderAll();
+  document.getElementById("content").scrollTo({ top: 0 });
+});
