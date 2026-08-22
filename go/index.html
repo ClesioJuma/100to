@@ -20,41 +20,39 @@
 </script>
 </head>
 <body>
-<a class="skip-link" href="#content">Saltar para o conteúdo</a>
-<header class="app-header">
-  <div class="brand">
-    <a class="brand-home" href="../" title="Voltar ao 100to">100to</a>
-    <img class="brand-logo" id="app-logo" src="../golang.png" alt="Go">
-    <div>
-      <h1 id="app-nome">Go</h1>
-      <p class="tagline" id="app-tagline"></p>
+<a class="skip-link" href="#app-content">Saltar para o conteúdo</a>
+<div class="app-shell">
+  <aside class="app-nav">
+    <div class="app-nav-brand">
+      <a class="brand-home" href="../" title="Voltar ao 100to">100to</a>
+      <div class="app-nav-produto">
+        <img class="brand-logo" id="app-logo" src="../golang.png" alt="Go">
+        <div>
+          <span class="app-nav-nome" id="app-nome"></span>
+          <span class="app-nav-tagline" id="app-tagline"></span>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="overall-progress">
-    <div class="overall-progress-text">
-      <span id="overall-count">0 / 0</span>
-      <span class="overall-progress-pct" id="overall-pct">0%</span>
+    <nav class="app-nav-links" id="app-nav-links"></nav>
+    <div class="app-nav-footer">
+      <a class="link-outro" id="link-outro" href="../design/">Design</a>
+      <button id="reset-btn" class="app-nav-reset" title="Reiniciar todo o progresso">Reiniciar progresso</button>
     </div>
-    <div class="progress-bar">
-      <div class="progress-fill" id="overall-fill"></div>
-    </div>
-    <p class="overall-motivation" id="overall-motivation"></p>
-  </div>
-  <div class="header-actions">
-    <a class="link-outro" id="link-outro" href="../design/">Design</a>
-    <button id="theme-toggle" class="icon-btn" title="Alternar tema"></button>
-    <button id="reset-btn" class="reset-btn" title="Reiniciar todo o progresso">Reiniciar progresso</button>
-  </div>
-</header>
+  </aside>
 
-<nav class="nivel-tabs" id="nivel-tabs"></nav>
-<div class="nivel-nota" id="nivel-nota" hidden></div>
-<nav class="trilha-tabs" id="trilha-tabs"></nav>
-
-<main class="layout">
-  <aside class="sidebar" id="sidebar"></aside>
-  <section class="content" id="content" tabindex="-1"></section>
-</main>
+  <div class="app-main">
+    <header class="app-topbar">
+      <div class="app-topbar-search" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <span>Pesquisar uma habilidade…</span>
+      </div>
+      <div class="app-topbar-actions">
+        <button id="theme-toggle" class="icon-btn" title="Alternar tema"></button>
+      </div>
+    </header>
+    <main class="app-content" id="app-content" tabindex="-1"></main>
+  </div>
+</div>
 
 <script src="data.js"></script>
 <script src="../app.js"></script>

@@ -38,6 +38,15 @@ const ICON_CHAT =
 const ICON_CORRIGIR =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
 
+const ICON_TRENDING =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>';
+
+const ICON_TROFEU =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3a2 2 0 0 1-2 5h-1M7 5H4a2 2 0 0 0 2 5h1"/></svg>';
+
+const ICON_UTILIZADOR =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>';
+
 const THEME_KEY = "100to:theme";
 const ENTRY_KEY = "100to:entrada";
 const NOTAS_KEY = "100to:notas";
@@ -230,32 +239,43 @@ let progress = loadProgress();
 let entradas = loadEntradas();
 let notas = loadNotas();
 
-// Deep-linking: o estado (nível/trilha/bloco) vive também no hash do URL,
-// #/nivel/trilha/bloco, para permitir partilhar um link direto, recarregar
-// sem perder o sítio, e o botão recuar do browser funcionar dentro da app.
-function hashDoEstado(nivelId, trilhaId, blocoId) {
-  return `#/${nivelId}/${trilhaId}/${blocoId}`;
+// Deep-linking: o estado vive também no hash do URL, para permitir partilhar
+// um link direto, recarregar sem perder o sítio, e o botão recuar do browser
+// funcionar dentro da app. Duas formas: #/pagina (Dashboard, Explorar,
+// Progresso, Conquistas, Perfil) ou #/trilhas/nivel/trilha/bloco (a antiga
+// Visão Geral + navegação por blocos, agora dentro da página "Trilhas").
+const PAGINAS_SHELL = ["dashboard", "explorar", "progresso", "conquistas", "perfil"];
+
+function hashDoEstado(page, nivelId, trilhaId, blocoId) {
+  if (page === "trilhas") return `#/trilhas/${nivelId}/${trilhaId}/${blocoId}`;
+  return `#/${page}`;
 }
 
 function estadoDoHash() {
   const partes = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
-  if (partes.length < 3) return null;
-  const [nivelId, trilhaId, blocoId] = partes;
-  const nivel = findNivel(nivelId);
-  if (!nivel) return null;
-  const trilha = nivel.trilhas.find((t) => t.id === trilhaId);
-  if (!trilha) return null;
-  if (blocoId !== OVERVIEW_ID && !findBloco(trilha, blocoId)) return null;
-  return { nivelId, trilhaId, blocoId };
+  if (!partes.length) return null;
+  const [page, ...resto] = partes;
+  if (page === "trilhas") {
+    if (resto.length < 3) return null;
+    const [nivelId, trilhaId, blocoId] = resto;
+    const nivel = findNivel(nivelId);
+    if (!nivel) return null;
+    const trilha = nivel.trilhas.find((t) => t.id === trilhaId);
+    if (!trilha) return null;
+    if (blocoId !== OVERVIEW_ID && !findBloco(trilha, blocoId)) return null;
+    return { page, nivelId, trilhaId, blocoId };
+  }
+  if (PAGINAS_SHELL.includes(page)) return { page };
+  return null;
 }
 
-// Arranca no nível de entrada escolhido para este eixo, não sempre no primeiro,
-// exceto se o URL já apontar para um sítio específico (link partilhado, ou
-// recarregar a página a meio de um bloco).
+// Arranca no Dashboard, exceto se o URL já apontar para um sítio específico
+// (link partilhado, ou recarregar a página a meio de um bloco).
 const estadoInicial = estadoDoHash();
-let currentNivel = estadoInicial ? estadoInicial.nivelId : nivelEntrada();
-let currentTrilha = estadoInicial ? estadoInicial.trilhaId : findNivel(currentNivel).trilhas[0].id;
-let currentBloco = estadoInicial ? estadoInicial.blocoId : OVERVIEW_ID;
+let currentPage = estadoInicial ? estadoInicial.page : "dashboard";
+let currentNivel = estadoInicial && estadoInicial.page === "trilhas" ? estadoInicial.nivelId : nivelEntrada();
+let currentTrilha = estadoInicial && estadoInicial.page === "trilhas" ? estadoInicial.trilhaId : findNivel(currentNivel).trilhas[0].id;
+let currentBloco = estadoInicial && estadoInicial.page === "trilhas" ? estadoInicial.blocoId : OVERVIEW_ID;
 
 function loadProgress() {
   try {
@@ -497,31 +517,42 @@ function tornarClicavel(el, onActivate) {
 }
 
 function navigateTo(nivelId, trilhaId, blocoId) {
+  currentPage = "trilhas";
   currentNivel = nivelId;
   currentTrilha = trilhaId;
   currentBloco = blocoId;
-  renderAll();
-  document.getElementById("content").scrollTo({ top: 0 });
+  renderApp();
+  document.getElementById("app-content").scrollTo({ top: 0 });
 
-  const hash = hashDoEstado(nivelId, trilhaId, blocoId);
+  const hash = hashDoEstado("trilhas", nivelId, trilhaId, blocoId);
+  if (location.hash !== hash) {
+    history.pushState(null, "", hash);
+  }
+}
+
+// Muda de página na shell (Dashboard, Explorar, Progresso, Conquistas,
+// Perfil) — ao contrário de navigateTo, não tem nível/trilha/bloco.
+function irParaPagina(page) {
+  currentPage = page;
+  renderApp();
+  document.getElementById("app-content").scrollTo({ top: 0 });
+
+  const hash = hashDoEstado(page);
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
 }
 
 function renderCabecalho() {
-  document.getElementById("app-nome").textContent = APP.nome;
-  document.getElementById("app-tagline").textContent = APP.tagline;
+  const nomeEl = document.getElementById("app-nome");
+  if (nomeEl) nomeEl.textContent = APP.nome;
   const logo = document.getElementById("app-logo");
-  logo.src = APP.icone;
-  logo.alt = APP.nome;
+  if (logo) { logo.src = APP.icone; logo.alt = APP.nome; }
   const outro = document.getElementById("link-outro");
-  outro.href = APP.outro.href;
-  outro.textContent = APP.outro.nome;
+  if (outro) { outro.href = APP.outro.href; outro.textContent = APP.outro.nome; }
 }
 
-function renderNiveis() {
-  const el = document.getElementById("nivel-tabs");
+function renderNiveis(el) {
   el.innerHTML = "";
   for (const nivel of NIVEIS) {
     const unlocked = isNivelUnlocked(nivel);
@@ -537,15 +568,13 @@ function renderNiveis() {
       currentNivel = nivel.id;
       currentTrilha = nivel.trilhas.length ? nivel.trilhas[0].id : null;
       currentBloco = OVERVIEW_ID;
-      renderAll();
+      navigateTo(currentNivel, currentTrilha, currentBloco);
     });
     el.appendChild(tab);
   }
-  renderNivelNota();
 }
 
-function renderNivelNota() {
-  const nota = document.getElementById("nivel-nota");
+function renderNivelNota(nota) {
   const primeiro = NIVEIS[0];
   if (nivelEntrada() === primeiro.id) {
     nota.hidden = true;
@@ -566,9 +595,8 @@ function renderNivelNota() {
   nota.appendChild(btn);
 }
 
-function renderTabs() {
+function renderTabs(tabsEl) {
   const nivel = findNivel(currentNivel);
-  const tabsEl = document.getElementById("trilha-tabs");
   tabsEl.innerHTML = "";
   if (!nivel.trilhas.length) {
     tabsEl.style.display = "none";
@@ -584,9 +612,8 @@ function renderTabs() {
   }
 }
 
-function renderSidebar() {
+function renderSidebar(sidebarEl) {
   const nivel = findNivel(currentNivel);
-  const sidebarEl = document.getElementById("sidebar");
   sidebarEl.innerHTML = "";
 
   if (!nivel.trilhas.length || !isNivelUnlocked(nivel)) {
@@ -1038,7 +1065,8 @@ function renderBlocoContent(nivel, trilha, bloco) {
     blocoNotaEl.textContent = n.corrigidos
       ? `Nota do bloco: ${n.media.toFixed(1)}/10 (${n.corrigidos}/${n.total} corrigidos)`
       : "";
-    renderNiveis();
+    const nivelTabsEl = document.getElementById("nivel-tabs");
+    if (nivelTabsEl) renderNiveis(nivelTabsEl);
   }
   if (iaDisponivel) {
     atualizarBlocoNotaUI();
@@ -1203,36 +1231,230 @@ function renderContent() {
   renderBlocoContent(nivel, trilha, bloco);
 }
 
-function renderOverall() {
-  const stats = overallStats();
-  document.getElementById("overall-count").textContent = `${stats.done} / ${stats.total}`;
-  document.getElementById("overall-pct").textContent = `${stats.pct}%`;
-  document.getElementById("overall-fill").style.width = `${stats.pct}%`;
-  document.getElementById("overall-motivation").textContent = motivationalText(stats.pct);
+// Página "Trilhas": o que antes era o corpo inteiro da app (tabs de nível,
+// tabs de trilha, sidebar de blocos, conteúdo) vive agora dentro da shell,
+// montado de raiz a cada visita porque os ids (#nivel-tabs, #sidebar,
+// #content, ...) são recriados — o resto do motor (renderContent,
+// renderBlocoContent, renderOverviewContent) não muda nada.
+function renderTrilhasPage(container) {
+  container.innerHTML = `
+    <nav class="nivel-tabs" id="nivel-tabs"></nav>
+    <div class="nivel-nota" id="nivel-nota" hidden></div>
+    <nav class="trilha-tabs" id="trilha-tabs"></nav>
+    <div class="layout">
+      <aside class="sidebar" id="sidebar"></aside>
+      <section class="content" id="content" tabindex="-1"></section>
+    </div>
+  `;
+  renderNiveis(document.getElementById("nivel-tabs"));
+  renderNivelNota(document.getElementById("nivel-nota"));
+  renderTabs(document.getElementById("trilha-tabs"));
+  renderSidebar(document.getElementById("sidebar"));
+  renderContent();
 }
 
-function renderAll() {
+// Trilha com progresso a meio (nem 0 nem completa), a mostrar no Dashboard.
+// Sem isso ainda, cai na primeira trilha do nível de entrada.
+function trilhaAtiva() {
+  let melhor = null;
+  for (const nivel of NIVEIS) {
+    if (!isNivelUnlocked(nivel)) continue;
+    for (const trilha of nivel.trilhas) {
+      const s = trilhaStats(trilha);
+      if (s.done > 0 && s.done < s.total) {
+        if (!melhor || s.done > melhor.stats.done) melhor = { nivel, trilha, stats: s };
+      }
+    }
+  }
+  if (melhor) return melhor;
+  const nivel = findNivel(nivelEntrada());
+  const trilha = nivel.trilhas[0];
+  return { nivel, trilha, stats: trilhaStats(trilha) };
+}
+
+function trilhasEmAndamento() {
+  const lista = [];
+  for (const nivel of NIVEIS) {
+    if (!isNivelUnlocked(nivel)) continue;
+    for (const trilha of nivel.trilhas) {
+      const s = trilhaStats(trilha);
+      if (s.done > 0 && s.done < s.total) lista.push({ nivel, trilha, stats: s });
+    }
+  }
+  return lista;
+}
+
+function gridDePassos(trilha) {
+  const exercicios = [];
+  for (const bloco of trilha.blocos) {
+    bloco.exercicios.forEach((_, idx) => exercicios.push(isDone(trilha.id, bloco.id, idx)));
+  }
+  const grid = document.createElement("div");
+  grid.className = "passos-grid";
+  const proximoIdx = exercicios.findIndex((feito) => !feito);
+  exercicios.forEach((feito, i) => {
+    const passo = document.createElement("span");
+    passo.className = "passo" + (feito ? " passo-feito" : i === proximoIdx ? " passo-atual" : "");
+    grid.appendChild(passo);
+  });
+  return grid;
+}
+
+function renderDashboardPage(container) {
+  const ativa = trilhaAtiva();
+  const geral = overallStats();
+  const nota = (() => {
+    let soma = 0, n = 0;
+    for (const nivel of NIVEIS) {
+      const nn = nivelNota(nivel);
+      if (nn.corrigidos) { soma += nn.media * nn.corrigidos; n += nn.corrigidos; }
+    }
+    return n ? soma / n : null;
+  })();
+  const emAndamento = trilhasEmAndamento();
+  const sequencia = calcularSequencia();
+
+  const header = document.createElement("div");
+  header.className = "dash-header";
+  header.innerHTML = `<h2>Olá 👋</h2><p class="bloco-desc">${motivationalText(geral.pct)}</p>`;
+  container.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "dash-grid";
+
+  const cardsStats = document.createElement("div");
+  cardsStats.className = "dash-stats";
+  cardsStats.innerHTML = `
+    <div class="stat-card"><strong>${geral.done}</strong><span>exercícios concluídos</span></div>
+    <div class="stat-card"><strong>${emAndamento.length}</strong><span>trilhas em andamento</span></div>
+    <div class="stat-card"><strong>${sequencia}</strong><span>dias em sequência</span></div>
+    <div class="stat-card"><strong>${nota !== null ? nota.toFixed(1) : "—"}</strong><span>média de notas</span></div>
+  `;
+  grid.appendChild(cardsStats);
+
+  if (ativa.trilha) {
+    const painelAtiva = document.createElement("div");
+    painelAtiva.className = "dash-card dash-trilha-ativa";
+    painelAtiva.innerHTML = `
+      <div class="dash-card-topo">
+        <span class="dash-card-eyebrow">Trilha ativa</span>
+        <h3>${ativa.trilha.titulo} — ${ativa.stats.done}/${ativa.stats.total}</h3>
+      </div>
+    `;
+    painelAtiva.appendChild(gridDePassos(ativa.trilha));
+    const btn = document.createElement("button");
+    btn.className = "dash-btn-primario";
+    btn.textContent = "Continuar trilha";
+    btn.onclick = () => navigateTo(ativa.nivel.id, ativa.trilha.id, OVERVIEW_ID);
+    painelAtiva.appendChild(btn);
+    grid.appendChild(painelAtiva);
+  }
+
+  const insight = document.createElement("div");
+  insight.className = "dash-card dash-insight";
+  const ultimaNota = Object.values(notas).sort((a, b) => new Date(b.data) - new Date(a.data))[0];
+  insight.innerHTML = `
+    <div class="dash-card-topo">${ICON_CHAT}<span class="dash-card-eyebrow">Tutor IA</span></div>
+    <p>${ultimaNota ? escapeHtml(ultimaNota.feedback) : "Corrige um exercício para receberes feedback aqui."}</p>
+  `;
+  grid.appendChild(insight);
+
+  if (emAndamento.length > 1) {
+    const outras = document.createElement("div");
+    outras.className = "dash-card dash-outras-trilhas";
+    outras.innerHTML = `<div class="dash-card-topo"><span class="dash-card-eyebrow">Outras trilhas em andamento</span></div>`;
+    const lista = document.createElement("div");
+    lista.className = "dash-lista-trilhas";
+    emAndamento
+      .filter((t) => t.trilha.id !== ativa.trilha.id)
+      .forEach((t) => {
+        const linha = document.createElement("div");
+        linha.className = "dash-linha-trilha";
+        linha.innerHTML = `<span>${t.trilha.titulo}</span><span class="dash-linha-trilha-num">${t.stats.done} / ${t.stats.total}</span>`;
+        tornarClicavel(linha, () => navigateTo(t.nivel.id, t.trilha.id, OVERVIEW_ID));
+        lista.appendChild(linha);
+      });
+    outras.appendChild(lista);
+    grid.appendChild(outras);
+  }
+
+  container.appendChild(grid);
+}
+
+function renderPaginaEmConstrucao(container, titulo) {
+  container.innerHTML = `
+    <div class="dash-header"><h2>${titulo}</h2></div>
+    <div class="locked-panel">
+      <div class="locked-panel-text"><strong>Em construção.</strong> Esta página ainda está a ser desenhada.</div>
+    </div>
+  `;
+}
+
+const RENDERIZADORES_PAGINA = {
+  dashboard: renderDashboardPage,
+  trilhas: renderTrilhasPage,
+  explorar: (c) => renderPaginaEmConstrucao(c, "Explorar"),
+  progresso: (c) => renderPaginaEmConstrucao(c, "Progresso"),
+  conquistas: (c) => renderPaginaEmConstrucao(c, "Conquistas"),
+  perfil: (c) => renderPaginaEmConstrucao(c, "Perfil"),
+};
+
+const ITENS_NAV = [
+  { id: "dashboard", label: "Dashboard", icon: ICON_GRID },
+  { id: "trilhas", label: "Minhas Trilhas", icon: ICON_BOOK },
+  { id: "explorar", label: "Explorar", icon: ICON_CHECKLIST },
+  { id: "progresso", label: "Progresso", icon: ICON_TRENDING },
+  { id: "conquistas", label: "Conquistas", icon: ICON_TROFEU },
+  { id: "perfil", label: "Perfil", icon: ICON_UTILIZADOR },
+];
+
+// Sequência de dias em uso: placeholder até à Tarefa 4 (Conquistas), que
+// passa a guardar a data de cada exercício concluído. Por agora, sem dados
+// de data, não há sequência para calcular.
+function calcularSequencia() {
+  return 0;
+}
+
+function renderAppNav() {
+  const el = document.getElementById("app-nav-links");
+  if (!el) return;
+  el.innerHTML = "";
+  for (const item of ITENS_NAV) {
+    const link = document.createElement("div");
+    link.className = "app-nav-link" + (currentPage === item.id ? " active" : "");
+    link.innerHTML = `${item.icon}<span>${item.label}</span>`;
+    tornarClicavel(link, () => {
+      // "Minhas Trilhas" precisa de nível/trilha/bloco, ao contrário das
+      // outras páginas da shell — navigateTo já sabe como preencher isso.
+      if (item.id === "trilhas") navigateTo(currentNivel, currentTrilha, currentBloco);
+      else irParaPagina(item.id);
+    });
+    el.appendChild(link);
+  }
+}
+
+function renderApp() {
   renderCabecalho();
-  renderNiveis();
-  renderTabs();
-  renderSidebar();
-  renderContent();
-  renderOverall();
+  renderAppNav();
+  const container = document.getElementById("app-content");
+  container.innerHTML = "";
+  const render = RENDERIZADORES_PAGINA[currentPage] || renderDashboardPage;
+  render(container);
 }
 
 document.getElementById("reset-btn").addEventListener("click", () => {
   if (confirm("Reiniciar todo o progresso, em todos os eixos e níveis? Esta ação não pode ser desfeita.")) {
     progress = {};
     saveProgress();
-    renderAll();
+    renderApp();
   }
 });
 
-renderAll();
+renderApp();
 
 // Sincroniza o hash com o estado inicial (cobre o caso de não haver nenhum,
 // ou de ser inválido), sem criar uma entrada extra no histórico.
-const hashInicial = hashDoEstado(currentNivel, currentTrilha, currentBloco);
+const hashInicial = hashDoEstado(currentPage, currentNivel, currentTrilha, currentBloco);
 if (location.hash !== hashInicial) {
   history.replaceState(null, "", hashInicial);
 }
@@ -1242,9 +1464,12 @@ if (location.hash !== hashInicial) {
 window.addEventListener("popstate", () => {
   const estado = estadoDoHash();
   if (!estado) return;
-  currentNivel = estado.nivelId;
-  currentTrilha = estado.trilhaId;
-  currentBloco = estado.blocoId;
-  renderAll();
-  document.getElementById("content").scrollTo({ top: 0 });
+  currentPage = estado.page;
+  if (estado.page === "trilhas") {
+    currentNivel = estado.nivelId;
+    currentTrilha = estado.trilhaId;
+    currentBloco = estado.blocoId;
+  }
+  renderApp();
+  document.getElementById("app-content").scrollTo({ top: 0 });
 });
