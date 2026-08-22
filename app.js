@@ -1429,7 +1429,7 @@ function renderDashboardPage(container) {
   const ultimaNota = Object.values(notas).sort((a, b) => new Date(b.data) - new Date(a.data))[0];
   insight.innerHTML = `
     <div class="dash-card-topo">${ICON_CHAT}<span class="dash-card-eyebrow">Tutor IA</span></div>
-    <p>${ultimaNota ? escapeHtml(ultimaNota.feedback) : "Corrige um exercício para receberes feedback aqui."}</p>
+    <p>${ultimaNota && ultimaNota.recomendacao ? escapeHtml(ultimaNota.recomendacao) : "Corrige um exercício para receberes feedback aqui."}</p>
   `;
   grid.appendChild(insight);
 
@@ -1469,7 +1469,7 @@ const RENDERIZADORES_PAGINA = {
   trilhas: renderTrilhasPage,
   explorar: (c) => renderPaginaEmConstrucao(c, "Explorar"),
   progresso: (c) => renderPaginaEmConstrucao(c, "Progresso"),
-  conquistas: (c) => renderPaginaEmConstrucao(c, "Conquistas"),
+  conquistas: renderConquistasPage,
   perfil: (c) => renderPaginaEmConstrucao(c, "Perfil"),
 };
 
@@ -1482,11 +1482,164 @@ const ITENS_NAV = [
   { id: "perfil", label: "Perfil", icon: ICON_UTILIZADOR },
 ];
 
-// Sequência de dias em uso: placeholder até à Tarefa 4 (Conquistas), que
-// passa a guardar a data de cada exercício concluído. Por agora, sem dados
-// de data, não há sequência para calcular.
+// Dia local (não UTC) no formato YYYY-MM-DD, para agrupar atividade por
+// "dia do calendário do utilizador", não por dia UTC.
+function diaLocal(d) {
+  return d.toLocaleDateString("en-CA");
+}
+
+// Datas guardadas em `progress` são ISO (desde a Tarefa 4); valores `true`
+// vêm de antes disso e não entram em sequências/mapa de atividade.
+function diasComAtividade() {
+  const dias = new Set();
+  for (const valor of Object.values(progress)) {
+    if (typeof valor === "string") dias.add(diaLocal(new Date(valor)));
+  }
+  return dias;
+}
+
+// Sequência atual: conta para trás a partir de hoje (ou de ontem, se hoje
+// ainda não tiver nada — não queres perder a sequência só porque ainda não
+// abriste a app hoje).
 function calcularSequencia() {
-  return 0;
+  const dias = diasComAtividade();
+  if (!dias.size) return 0;
+  const cursor = new Date();
+  if (!dias.has(diaLocal(cursor))) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (dias.has(diaLocal(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+// Maior sequência alguma vez feita (para badges tipo "30 dias seguidos",
+// que não devem desaparecer só porque a sequência atual quebrou).
+function calcularMaiorSequencia() {
+  const dias = [...diasComAtividade()].sort();
+  if (!dias.length) return 0;
+  let maior = 1;
+  let atual = 1;
+  for (let i = 1; i < dias.length; i++) {
+    const diffDias = Math.round((new Date(dias[i]) - new Date(dias[i - 1])) / 86400000);
+    atual = diffDias === 1 ? atual + 1 : 1;
+    if (atual > maior) maior = atual;
+  }
+  return maior;
+}
+
+// Mapa de atividade tipo GitHub: quantos exercícios concluídos em cada um
+// dos últimos N dias.
+function mapaDeAtividade(semanas = 16) {
+  const contagem = {};
+  for (const valor of Object.values(progress)) {
+    if (typeof valor === "string") {
+      const dia = diaLocal(new Date(valor));
+      contagem[dia] = (contagem[dia] || 0) + 1;
+    }
+  }
+  const dias = [];
+  const totalDias = semanas * 7;
+  for (let i = totalDias - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const chave = diaLocal(d);
+    dias.push({ data: chave, contagem: contagem[chave] || 0 });
+  }
+  return dias;
+}
+
+function contextoConquistas() {
+  const geral = overallStats();
+  let blocosCompletos = 0;
+  for (const nivel of NIVEIS) {
+    for (const trilha of nivel.trilhas) blocosCompletos += trilhaStats(trilha).blocosCompletos;
+  }
+  const temNotaPerfeita = Object.values(notas).some((n) => n.geral === 100);
+  return {
+    sequenciaAtual: calcularSequencia(),
+    maiorSequencia: calcularMaiorSequencia(),
+    totalConcluidos: geral.done,
+    blocosCompletos,
+    temNotaPerfeita,
+  };
+}
+
+const BADGES = [
+  { id: "sequencia-7", titulo: "Sequência de 7 dias", categoria: "Consistência", descricao: "Estuda 7 dias seguidos.", verifica: (c) => c.maiorSequencia >= 7 },
+  { id: "sequencia-30", titulo: "Sequência de 30 dias", categoria: "Consistência", descricao: "Estuda 30 dias seguidos.", verifica: (c) => c.maiorSequencia >= 30 },
+  { id: "primeiro-bloco", titulo: "Primeiro bloco concluído", categoria: "Domínio", descricao: "Termina o teu primeiro bloco.", verifica: (c) => c.blocosCompletos >= 1 },
+  { id: "meio-caminho", titulo: "Meio caminho", categoria: "Domínio", descricao: "Completa 50 exercícios.", verifica: (c) => c.totalConcluidos >= 50 },
+  { id: "cem-exercicios", titulo: "100 exercícios", categoria: "Domínio", descricao: "Completa 100 exercícios.", verifica: (c) => c.totalConcluidos >= 100 },
+  { id: "nota-100", titulo: "Nota 100", categoria: "Qualidade", descricao: "Recebe uma correção perfeita da IA.", verifica: (c) => c.temNotaPerfeita },
+];
+
+function renderMapaAtividade() {
+  const dias = mapaDeAtividade();
+  const wrap = document.createElement("div");
+  wrap.className = "atividade-mapa";
+  for (const dia of dias) {
+    const cel = document.createElement("span");
+    const nivel = dia.contagem === 0 ? 0 : dia.contagem === 1 ? 1 : dia.contagem <= 3 ? 2 : 3;
+    cel.className = `atividade-dia atividade-nivel-${nivel}`;
+    cel.title = `${dia.data}: ${dia.contagem} exercício${dia.contagem === 1 ? "" : "s"}`;
+    wrap.appendChild(cel);
+  }
+  return wrap;
+}
+
+function renderConquistasPage(container) {
+  const ctx = contextoConquistas();
+
+  const header = document.createElement("div");
+  header.className = "dash-header";
+  header.innerHTML = `<h2>Suas Conquistas</h2><p class="bloco-desc">Cada exercício é um passo em direção ao domínio.</p>`;
+  container.appendChild(header);
+
+  const stats = document.createElement("div");
+  stats.className = "dash-stats";
+  stats.innerHTML = `
+    <div class="stat-card"><strong>${ctx.sequenciaAtual}</strong><span>dias em sequência agora</span></div>
+    <div class="stat-card"><strong>${ctx.maiorSequencia}</strong><span>maior sequência</span></div>
+    <div class="stat-card"><strong>${ctx.totalConcluidos}</strong><span>exercícios concluídos</span></div>
+    <div class="stat-card"><strong>${ctx.blocosCompletos}</strong><span>blocos completos</span></div>
+  `;
+  container.appendChild(stats);
+
+  const atividadeCard = document.createElement("div");
+  atividadeCard.className = "dash-card";
+  atividadeCard.style.marginTop = "var(--s5)";
+  atividadeCard.innerHTML = `<div class="dash-card-topo"><span class="dash-card-eyebrow">Atividade recente</span></div>`;
+  atividadeCard.appendChild(renderMapaAtividade());
+  container.appendChild(atividadeCard);
+
+  const categorias = [...new Set(BADGES.map((b) => b.categoria))];
+  const badgesGrid = document.createElement("div");
+  badgesGrid.className = "conquistas-categorias";
+  for (const categoria of categorias) {
+    const bloco = document.createElement("div");
+    bloco.className = "conquistas-categoria";
+    bloco.innerHTML = `<h3>${categoria}</h3>`;
+    const lista = document.createElement("div");
+    lista.className = "conquistas-lista";
+    for (const badge of BADGES.filter((b) => b.categoria === categoria)) {
+      const conquistado = badge.verifica(ctx);
+      const item = document.createElement("div");
+      item.className = "conquista-card" + (conquistado ? " conquista-feita" : "");
+      item.innerHTML = `
+        <div class="conquista-icone">${conquistado ? ICON_TROFEU : ICON_LOCK}</div>
+        <div>
+          <strong>${badge.titulo}</strong>
+          <span>${badge.descricao}</span>
+        </div>
+      `;
+      lista.appendChild(item);
+    }
+    bloco.appendChild(lista);
+    badgesGrid.appendChild(bloco);
+  }
+  container.appendChild(badgesGrid);
 }
 
 function renderAppNav() {
