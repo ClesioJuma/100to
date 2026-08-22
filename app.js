@@ -1477,20 +1477,11 @@ function renderDashboardPage(container) {
   container.appendChild(grid);
 }
 
-function renderPaginaEmConstrucao(container, titulo) {
-  container.innerHTML = `
-    <div class="dash-header"><h2>${titulo}</h2></div>
-    <div class="locked-panel">
-      <div class="locked-panel-text"><strong>Em construção.</strong> Esta página ainda está a ser desenhada.</div>
-    </div>
-  `;
-}
-
 const RENDERIZADORES_PAGINA = {
   dashboard: renderDashboardPage,
   trilhas: renderTrilhasPage,
-  explorar: (c) => renderPaginaEmConstrucao(c, "Explorar"),
-  progresso: (c) => renderPaginaEmConstrucao(c, "Progresso"),
+  explorar: renderExplorarPage,
+  progresso: renderProgressoPage,
   conquistas: renderConquistasPage,
   perfil: renderPerfilPage,
 };
@@ -1609,6 +1600,118 @@ function renderMapaAtividade() {
     wrap.appendChild(cel);
   }
   return wrap;
+}
+
+// Explorar: cartões por nível deste eixo (Go ou Design, conforme o site),
+// mais um cartão a apontar para o outro eixo. Os mockups mostravam vários
+// cursos (Go/Python/React); aqui usa-se o conteúdo que existe de facto.
+function renderExplorarPage(container) {
+  const header = document.createElement("div");
+  header.className = "dash-header";
+  header.innerHTML = `
+    <h2>Exploração de Trilhas</h2>
+    <p class="bloco-desc">Escolhe por onde continuar. Cada nível é um percurso completo, do primeiro exercício ao último.</p>
+  `;
+  container.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "explorar-grid";
+
+  for (const nivel of NIVEIS) {
+    const stats = nivelStats(nivel);
+    const desbloqueado = isNivelUnlocked(nivel);
+    const comecado = stats.done > 0;
+    const card = document.createElement("div");
+    card.className = "explorar-card" + (desbloqueado ? "" : " explorar-card-bloqueado");
+    card.innerHTML = `
+      <div class="explorar-card-topo">
+        <span class="explorar-card-icone">${desbloqueado ? APP.nome.slice(0, 2) : ICON_LOCK}</span>
+        <span class="explorar-card-etiqueta">${nivel.subtitulo}</span>
+      </div>
+      <h3>${nivel.titulo}</h3>
+      <p class="explorar-card-desc">${escapeHtml(nivel.descricao || "")}</p>
+      <div class="explorar-card-progresso">${stats.done} / ${stats.total} exercícios</div>
+    `;
+    const btn = document.createElement("button");
+    btn.className = comecado ? "explorar-btn-secundario" : "dash-btn-primario";
+    btn.textContent = desbloqueado ? (comecado ? "Continuar" : "Iniciar trilha") : "Bloqueado";
+    btn.disabled = !desbloqueado;
+    btn.onclick = () => navigateTo(nivel.id, nivel.trilhas[0].id, OVERVIEW_ID);
+    card.appendChild(btn);
+    grid.appendChild(card);
+  }
+
+  container.appendChild(grid);
+
+  const outro = document.createElement("div");
+  outro.className = "dash-card explorar-outro";
+  outro.style.marginTop = "var(--s5)";
+  outro.innerHTML = `
+    <div class="dash-card-topo"><span class="dash-card-eyebrow">O outro eixo</span></div>
+    <p>O 100to tem duas trilhas independentes. Estás em <strong>${escapeHtml(APP.nome)}</strong>.</p>
+    <a class="dash-btn-primario explorar-link-outro" href="${APP.outro.href}">Ir para ${escapeHtml(APP.outro.nome)}</a>
+  `;
+  container.appendChild(outro);
+}
+
+// Progresso: detalhe por nível, trilha e bloco, a partir das stats já
+// calculadas — sem dados novos, só uma vista mais completa do que já existe.
+function renderProgressoPage(container) {
+  const geral = overallStats();
+
+  const header = document.createElement("div");
+  header.className = "dash-header";
+  header.innerHTML = `
+    <h2>Progresso</h2>
+    <p class="bloco-desc">${geral.done} de ${geral.total} exercícios concluídos (${geral.pct}%).</p>
+  `;
+  container.appendChild(header);
+
+  for (const nivel of NIVEIS) {
+    const nStats = nivelStats(nivel);
+    const nNota = nivelNota(nivel);
+    const secao = document.createElement("div");
+    secao.className = "dash-card progresso-nivel";
+    secao.innerHTML = `
+      <div class="progresso-nivel-topo">
+        <h3>${nivel.titulo} <span class="progresso-nivel-sub">${nivel.subtitulo}</span></h3>
+        <span class="progresso-nivel-num">${nStats.done} / ${nStats.total}${nNota.corrigidos ? ` · média ${Math.round(nNota.media)}/100` : ""}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${nStats.pct}%"></div></div>
+    `;
+
+    if (isNivelUnlocked(nivel)) {
+      for (const trilha of nivel.trilhas) {
+        const tStats = trilhaStats(trilha);
+        const bloco = document.createElement("div");
+        bloco.className = "progresso-trilha";
+        bloco.innerHTML = `<div class="progresso-trilha-titulo">${trilha.titulo} <span>${tStats.done}/${tStats.total}</span></div>`;
+        const lista = document.createElement("div");
+        lista.className = "progresso-blocos";
+        for (const b of trilha.blocos) {
+          const bStats = blocoStats(trilha, b);
+          const item = document.createElement("div");
+          item.className = "progresso-bloco" + (bStats.total && bStats.done === bStats.total ? " completo" : "");
+          item.innerHTML = `
+            <span class="progresso-bloco-nome">${b.titulo}</span>
+            <span class="progresso-bloco-num">${bStats.done}/${bStats.total}</span>
+          `;
+          tornarClicavel(item, () => navigateTo(nivel.id, trilha.id, b.id));
+          lista.appendChild(item);
+        }
+        bloco.appendChild(lista);
+        secao.appendChild(bloco);
+      }
+    } else {
+      const bloqueado = document.createElement("p");
+      bloqueado.className = "bloco-desc";
+      bloqueado.style.margin = "var(--s3) 0 0";
+      bloqueado.textContent = "Nível bloqueado. Conclui o nível anterior, ou escolhe-o como nível de entrada.";
+      secao.appendChild(bloqueado);
+    }
+
+    container.appendChild(secao);
+  }
 }
 
 function renderPerfilPage(container) {
