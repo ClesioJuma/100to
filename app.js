@@ -1221,6 +1221,12 @@ function renderBlocoContent(nivel, trilha, bloco) {
     };
     row.onclick = () => toggleDone(trilha.id, bloco.id, idx);
 
+    // Os botões de ação vivem num grupo próprio: em ecrãs estreitos ele cai
+    // para uma linha abaixo do enunciado, em vez de espremer o texto (4
+    // botões de 44px roubavam quase toda a largura numa coluna estreita).
+    const acoes = document.createElement("div");
+    acoes.className = "exercicio-acoes";
+
     const dicaTexto = bloco.dicas && bloco.dicas[idx];
     const panels = [];
 
@@ -1234,7 +1240,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
         ev.stopPropagation();
         item.classList.toggle("hint-open");
       };
-      row.appendChild(hintBtn);
+      acoes.appendChild(hintBtn);
 
       const hintPanel = document.createElement("div");
       hintPanel.className = "exercicio-dica";
@@ -1252,7 +1258,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
         ev.stopPropagation();
         item.classList.toggle("res-open");
       };
-      row.appendChild(resBtn);
+      acoes.appendChild(resBtn);
 
       const panel = document.createElement("div");
       panel.className = "exercicio-recursos";
@@ -1278,7 +1284,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
         ev.stopPropagation();
         item.classList.toggle("duvida-open");
       };
-      row.appendChild(duvidaBtn);
+      acoes.appendChild(duvidaBtn);
       panels.push(criarPainelDuvida(trilha, bloco, idx, texto));
 
       const corrigirBtn = document.createElement("button");
@@ -1290,10 +1296,11 @@ function renderBlocoContent(nivel, trilha, bloco) {
         ev.stopPropagation();
         item.classList.toggle("corrigir-open");
       };
-      row.appendChild(corrigirBtn);
+      acoes.appendChild(corrigirBtn);
       panels.push(criarPainelCorrigir(trilha, bloco, idx, texto, atualizarBlocoNotaUI));
     }
 
+    if (acoes.childElementCount) row.appendChild(acoes);
     item.appendChild(row);
     panels.forEach((p) => item.appendChild(p));
 

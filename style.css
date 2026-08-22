@@ -1279,11 +1279,23 @@ code {
 
 .exercicio-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--s3);
   padding: var(--s3) var(--s4);
   cursor: pointer;
   min-height: 52px;
+}
+
+/* Grupo dos botões de ação. O flex-basis do enunciado (abaixo) garante que,
+   quando sobra menos do que isso para o texto, este grupo passa para uma
+   linha própria em vez de espremer o enunciado até partir palavras. */
+.exercicio-acoes {
+  display: flex;
+  gap: var(--s2);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-left: auto;
 }
 
 .exercicio-checkbox {
@@ -1322,7 +1334,7 @@ code {
 .exercicio-text {
   font-size: var(--fs-base);
   line-height: 1.65;
-  flex: 1;
+  flex: 1 1 16rem;
   min-width: 0;
   padding-top: 1px;
   max-width: 66ch;
