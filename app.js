@@ -328,9 +328,9 @@ function isDone(trilhaId, blocoId, idx) {
 function toggleDone(trilhaId, blocoId, idx) {
   const key = exKey(trilhaId, blocoId, idx);
   if (progress[key]) delete progress[key];
-  else progress[key] = true;
+  else progress[key] = new Date().toISOString();
   saveProgress();
-  renderAll();
+  renderApp();
 }
 
 // Notas do piloto de correção com IA. Mesma chave dos exercícios
