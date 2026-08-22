@@ -374,7 +374,7 @@ function blocoNota(trilha, bloco) {
   for (let i = 0; i < bloco.exercicios.length; i++) {
     const nota = getNota(trilha.id, bloco.id, i);
     if (nota) {
-      soma += nota.nota;
+      soma += nota.geral;
       corrigidos++;
     }
   }
@@ -562,7 +562,7 @@ function renderNiveis(el) {
     tab.className = "nivel-tab" + (nivel.id === currentNivel ? " active" : "") + (unlocked ? "" : " locked");
     tab.innerHTML = `
       <span class="nivel-tab-titulo">${nivel.titulo}${unlocked ? "" : ` <span class="nivel-tab-lock">${ICON_LOCK}</span>`}</span>
-      <span class="nivel-tab-sub">${nivel.subtitulo}${stats.total ? ` · ${stats.done}/${stats.total}` : ""}${nota.corrigidos ? ` · média ${nota.media.toFixed(1)}/10` : ""}</span>
+      <span class="nivel-tab-sub">${nivel.subtitulo}${stats.total ? ` · ${stats.done}/${stats.total}` : ""}${nota.corrigidos ? ` · média ${Math.round(nota.media)}/100` : ""}</span>
     `;
     tornarClicavel(tab, () => {
       currentNivel = nivel.id;
@@ -916,15 +916,61 @@ function criarPainelDuvida(trilha, bloco, idx, enunciado) {
   return painel;
 }
 
+// Editor de código (CodeMirror 6, via import dinâmico de CDN — mantém o
+// projeto sem build step). Se a rede/CDN falhar, cai num textarea simples,
+// para o painel de Corrigir nunca ficar inutilizável.
+let cmModulosPromise = null;
+function carregarCodeMirror() {
+  if (!cmModulosPromise) {
+    cmModulosPromise = Promise.all([
+      import("https://esm.sh/codemirror@6.0.1"),
+      import("https://esm.sh/@codemirror/language@6.10.1"),
+      import("https://esm.sh/@codemirror/legacy-modes@6.4.0/mode/go"),
+      import("https://esm.sh/@codemirror/theme-one-dark@6.1.2"),
+    ]).catch((err) => {
+      console.error("Não foi possível carregar o editor de código:", err);
+      return null;
+    });
+  }
+  return cmModulosPromise;
+}
+
+async function criarEditorCodigo(container) {
+  const modulos = await carregarCodeMirror();
+  if (!modulos) return null;
+  const [{ EditorView, basicSetup }, { StreamLanguage }, { go }, { oneDark }] = modulos;
+  const escuro = effectiveTheme() === "dark";
+  const view = new EditorView({
+    doc: "",
+    extensions: [basicSetup, StreamLanguage.define(go), ...(escuro ? [oneDark] : [])],
+    parent: container,
+  });
+  return view;
+}
+
 function criarPainelCorrigir(trilha, bloco, idx, enunciado, aoAtualizarNota) {
   const painel = document.createElement("div");
   painel.className = "exercicio-corrigir";
   painel.onclick = (ev) => ev.stopPropagation();
 
-  const textarea = document.createElement("textarea");
-  textarea.className = "corrigir-input";
-  textarea.rows = 5;
-  textarea.placeholder = "Cola aqui a tua resposta ou código...";
+  const editorContainer = document.createElement("div");
+  editorContainer.className = "corrigir-editor";
+  const textareaFallback = document.createElement("textarea");
+  textareaFallback.className = "corrigir-input";
+  textareaFallback.rows = 5;
+  textareaFallback.placeholder = "Cola aqui a tua resposta ou código...";
+  editorContainer.appendChild(textareaFallback);
+
+  let editorView = null;
+  criarEditorCodigo(editorContainer).then((view) => {
+    if (!view) return;
+    editorView = view;
+    textareaFallback.remove();
+  });
+
+  function valorAtual() {
+    return (editorView ? editorView.state.doc.toString() : textareaFallback.value).trim();
+  }
 
   const btn = document.createElement("button");
   btn.className = "corrigir-enviar";
@@ -934,6 +980,10 @@ function criarPainelCorrigir(trilha, bloco, idx, enunciado, aoAtualizarNota) {
   resultadoEl.className = "corrigir-resultado";
   resultadoEl.hidden = true;
 
+  function listaHTML(itens) {
+    return itens && itens.length ? `<ul>${itens.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul>` : "";
+  }
+
   function renderResultado(registo) {
     if (!registo) {
       resultadoEl.hidden = true;
@@ -941,15 +991,28 @@ function criarPainelCorrigir(trilha, bloco, idx, enunciado, aoAtualizarNota) {
       return;
     }
     resultadoEl.hidden = false;
+    const criterios = [
+      { label: "Correção", valor: registo.correcao },
+      { label: "Qualidade", valor: registo.qualidade },
+      { label: "Eficiência", valor: registo.eficiencia },
+      { label: "Boas práticas", valor: registo.boasPraticas },
+    ];
     resultadoEl.innerHTML = `
-      <span class="corrigir-nota${registo.correto ? " corrigir-nota-ok" : ""}">${registo.nota.toFixed(1)}/10</span>
-      <p class="corrigir-feedback">${escapeHtml(registo.feedback)}</p>
+      <div class="corrigir-geral-linha">
+        <span class="corrigir-geral${registo.correto ? " corrigir-geral-ok" : ""}">${registo.geral}<small>/100</small></span>
+        <div class="corrigir-criterios">
+          ${criterios.map((c) => `<span class="corrigir-criterio"><strong>${c.valor}</strong>${escapeHtml(c.label)}</span>`).join("")}
+        </div>
+      </div>
+      ${registo.pontosFortes && registo.pontosFortes.length ? `<div class="corrigir-secao corrigir-fortes"><h4>O que fez bem</h4>${listaHTML(registo.pontosFortes)}</div>` : ""}
+      ${registo.pontosMelhorar && registo.pontosMelhorar.length ? `<div class="corrigir-secao corrigir-melhorar"><h4>O que pode melhorar</h4>${listaHTML(registo.pontosMelhorar)}</div>` : ""}
+      ${registo.recomendacao ? `<p class="corrigir-recomendacao"><strong>Recomendação da IA:</strong> ${escapeHtml(registo.recomendacao)}</p>` : ""}
     `;
   }
   renderResultado(getNota(trilha.id, bloco.id, idx));
 
   async function corrigir() {
-    const resposta = textarea.value.trim();
+    const resposta = valorAtual();
     if (!resposta || btn.disabled) return;
     btn.disabled = true;
     btn.textContent = "A corrigir...";
@@ -963,7 +1026,18 @@ function criarPainelCorrigir(trilha, bloco, idx, enunciado, aoAtualizarNota) {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.erro || "Falha ao corrigir.");
-      const registo = { nota: data.nota, feedback: data.feedback, correto: data.correto, data: new Date().toISOString() };
+      const registo = {
+        geral: data.geral,
+        correcao: data.correcao,
+        qualidade: data.qualidade,
+        eficiencia: data.eficiencia,
+        boasPraticas: data.boasPraticas,
+        pontosFortes: data.pontosFortes,
+        pontosMelhorar: data.pontosMelhorar,
+        recomendacao: data.recomendacao,
+        correto: data.correto,
+        data: new Date().toISOString(),
+      };
       setNota(trilha.id, bloco.id, idx, registo);
       renderResultado(registo);
       if (aoAtualizarNota) aoAtualizarNota();
@@ -977,7 +1051,7 @@ function criarPainelCorrigir(trilha, bloco, idx, enunciado, aoAtualizarNota) {
 
   btn.onclick = corrigir;
 
-  painel.appendChild(textarea);
+  painel.appendChild(editorContainer);
   painel.appendChild(btn);
   painel.appendChild(resultadoEl);
   return painel;
@@ -1063,7 +1137,7 @@ function renderBlocoContent(nivel, trilha, bloco) {
     const n = blocoNota(trilha, bloco);
     blocoNotaEl.hidden = n.corrigidos === 0;
     blocoNotaEl.textContent = n.corrigidos
-      ? `Nota do bloco: ${n.media.toFixed(1)}/10 (${n.corrigidos}/${n.total} corrigidos)`
+      ? `Nota do bloco: ${Math.round(n.media)}/100 (${n.corrigidos}/${n.total} corrigidos)`
       : "";
     const nivelTabsEl = document.getElementById("nivel-tabs");
     if (nivelTabsEl) renderNiveis(nivelTabsEl);
@@ -1328,7 +1402,7 @@ function renderDashboardPage(container) {
     <div class="stat-card"><strong>${geral.done}</strong><span>exercícios concluídos</span></div>
     <div class="stat-card"><strong>${emAndamento.length}</strong><span>trilhas em andamento</span></div>
     <div class="stat-card"><strong>${sequencia}</strong><span>dias em sequência</span></div>
-    <div class="stat-card"><strong>${nota !== null ? nota.toFixed(1) : "—"}</strong><span>média de notas</span></div>
+    <div class="stat-card"><strong>${nota !== null ? Math.round(nota) : "—"}</strong><span>média de notas (/100)</span></div>
   `;
   grid.appendChild(cardsStats);
 

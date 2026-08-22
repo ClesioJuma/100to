@@ -1371,24 +1371,55 @@ code {
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   padding: var(--s3);
-  margin-bottom: var(--s3);
 }
 .corrigir-input:focus { border-color: var(--ia-borda); }
-.corrigir-resultado { margin-top: var(--s4); max-width: 62ch; }
-.corrigir-nota {
-  display: inline-block;
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: var(--fs-sm);
+
+.corrigir-editor {
+  max-width: 66ch;
+  margin-bottom: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.corrigir-editor .cm-editor { font-size: 16px; font-family: var(--mono); }
+.corrigir-editor .cm-editor.cm-focused { outline: 2px solid var(--brand); outline-offset: -1px; }
+.corrigir-editor .cm-scroller { min-height: 120px; }
+
+.corrigir-resultado { margin-top: var(--s4); max-width: 66ch; }
+.corrigir-geral-linha { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; margin-bottom: var(--s4); }
+.corrigir-geral {
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: var(--fs-2xl);
   color: var(--text-dim);
-  background: var(--surface);
+}
+.corrigir-geral small { font-family: var(--sans); font-weight: 500; font-size: var(--fs-sm); color: var(--text-mute); }
+.corrigir-geral-ok { color: var(--done); }
+.corrigir-criterios { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.corrigir-criterio {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-2xs);
+  color: var(--text-dim);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   padding: var(--s1) var(--s3);
 }
-.corrigir-nota-ok { color: var(--done); border-color: var(--done-soft); background: var(--done-soft); }
-.corrigir-feedback {
-  margin: var(--s2) 0 0;
+.corrigir-criterio strong { font-family: var(--mono); color: var(--text); }
+.corrigir-secao { margin-bottom: var(--s3); }
+.corrigir-secao h4 { margin: 0 0 var(--s2); font-size: var(--fs-sm); }
+.corrigir-secao ul { margin: 0; padding-left: var(--s5); }
+.corrigir-secao li { font-size: var(--fs-sm); line-height: 1.6; color: var(--text); margin-bottom: var(--s1); }
+.corrigir-fortes h4 { color: var(--done); }
+.corrigir-melhorar h4 { color: var(--aviso); }
+.corrigir-recomendacao {
+  margin: var(--s3) 0 0;
+  padding: var(--s3) var(--s4);
+  background: var(--ia-soft);
+  border: 1px solid var(--ia-borda);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text);
