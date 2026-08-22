@@ -60,5 +60,24 @@ function renderProgresso() {
   }
 }
 
+// Mapa visual do percurso completo, sem carregar os dados das trilhas: cada
+// quadrado é um exercício, agregado dos dois eixos, na ordem em que estão.
+function renderJornada() {
+  const grid = document.getElementById("lp-jornada-grid");
+  if (!grid) return;
+  const feito = lerProgresso();
+  const totalGeral = Object.values(TOTAIS).reduce((s, c) => s + c.total, 0);
+  const feitoGeral = Object.keys(TOTAIS).reduce((s, e) => s + Math.min(feito[e] || 0, TOTAIS[e].total), 0);
+
+  grid.innerHTML = "";
+  for (let i = 0; i < totalGeral; i++) {
+    const passo = document.createElement("span");
+    passo.className = "lp-jornada-passo" + (i < feitoGeral ? " feito" : i === feitoGeral ? " atual" : "");
+    grid.appendChild(passo);
+  }
+  grid.setAttribute("aria-label", `${feitoGeral} de ${totalGeral} exercícios concluídos nas duas trilhas`);
+}
+
 renderThemeToggle();
 renderProgresso();
+renderJornada();

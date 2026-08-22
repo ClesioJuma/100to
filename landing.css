@@ -24,6 +24,19 @@ body.landing {
 /* ---------- Hero ---------- */
 
 .lp-hero { padding: var(--s10) 0 var(--s8); }
+.lp-badge {
+  display: inline-block;
+  margin-bottom: var(--s4);
+  padding: var(--s1) var(--s4);
+  border-radius: var(--r-full);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  color: var(--brand);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 .lp-hero h1 {
   margin: 0 0 var(--s5);
   font-size: clamp(2rem, 5vw, 3.1rem);
@@ -57,6 +70,41 @@ body.landing {
   font-variant-numeric: tabular-nums;
 }
 .lp-stats span { font-size: var(--fs-xs); color: var(--text-mute); margin-top: 2px; }
+
+/* ---------- Jornada visual ---------- */
+
+.lp-jornada { margin-top: var(--s10); }
+.lp-jornada h3 {
+  margin: 0 0 var(--s4);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-mute);
+  text-align: center;
+}
+.lp-jornada-caixa {
+  padding: var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.lp-jornada-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10px, 1fr));
+  gap: 4px;
+  margin-bottom: var(--s5);
+}
+.lp-jornada-passo { aspect-ratio: 1; border-radius: 2px; background: var(--surface-2); border: 1px solid var(--border); }
+.lp-jornada-passo.feito { background: var(--brand); border-color: var(--brand); }
+.lp-jornada-passo.atual { background: var(--brand-soft); border-color: var(--brand); }
+
+.lp-legenda { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s5); font-size: var(--fs-2xs); color: var(--text-mute); }
+.lp-legenda span { display: inline-flex; align-items: center; gap: var(--s2); }
+.lp-legenda-cor { width: 10px; height: 10px; border-radius: 2px; display: inline-block; border: 1px solid var(--border); }
+.lp-legenda-feito { background: var(--brand); border-color: var(--brand); }
+.lp-legenda-atual { background: var(--brand-soft); border-color: var(--brand); }
+.lp-legenda-pendente { background: var(--surface-2); }
 
 /* ---------- Cartões de trilha ---------- */
 
@@ -171,6 +219,26 @@ body.landing {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: var(--s6);
+}
+.lp-como-grid > div {
+  padding: var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.lp-passo-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: var(--heading);
+  font-size: var(--fs-xs);
+  font-weight: 700;
 }
 .lp-como-grid h4 { margin: 0 0 var(--s2); font-size: var(--fs-base); font-weight: 600; }
 .lp-como-grid p { margin: 0; font-size: var(--fs-sm); line-height: 1.65; color: var(--text-dim); }
