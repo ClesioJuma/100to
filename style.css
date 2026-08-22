@@ -568,6 +568,57 @@ code {
   .dash-grid { grid-template-columns: 1fr; }
 }
 
+/* ---- Perfil ---- */
+.app-nav-avatar { font-size: 15px; line-height: 1; width: 13px; text-align: center; flex-shrink: 0; }
+.perfil-identidade { display: flex; align-items: flex-start; gap: var(--s5); flex-wrap: wrap; }
+.perfil-avatar {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--r-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  background: var(--brand-soft);
+  border: 2px solid var(--brand-line);
+}
+.perfil-campos { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: var(--s2); }
+.perfil-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mute);
+}
+.perfil-input {
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--s2) var(--s3);
+  min-height: 44px;
+  max-width: 320px;
+  margin-bottom: var(--s3);
+}
+.perfil-input:focus { border-color: var(--brand-line); }
+.perfil-avatares { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.perfil-avatar-opcao {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.perfil-avatar-opcao:hover { border-color: var(--border-strong); }
+.perfil-avatar-opcao.ativo { border-color: var(--brand); background: var(--brand-soft); }
+
 /* ---- Conquistas ---- */
 .atividade-mapa {
   display: grid;

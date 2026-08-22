@@ -50,6 +50,8 @@ const ICON_UTILIZADOR =
 const THEME_KEY = "100to:theme";
 const ENTRY_KEY = "100to:entrada";
 const NOTAS_KEY = "100to:notas";
+const PERFIL_KEY = "100to:perfil";
+const AVATARES = ["🦫", "🐹", "🦉", "🐙", "🦊", "🐢", "🚀", "⚡", "🌱", "🎯"];
 
 // Piloto: chat de dúvidas e correção com IA, só disponível para estes blocos
 // (têm solução de referência escrita em /api/_ref) e só quando o site corre
@@ -238,6 +240,7 @@ renderThemeToggle();
 let progress = loadProgress();
 let entradas = loadEntradas();
 let notas = loadNotas();
+let perfil = loadPerfil();
 
 // Deep-linking: o estado vive também no hash do URL, para permitir partilhar
 // um link direto, recarregar sem perder o sítio, e o botão recuar do browser
@@ -346,6 +349,25 @@ function loadNotas() {
 
 function saveNotas() {
   localStorage.setItem(NOTAS_KEY, JSON.stringify(notas));
+}
+
+// Perfil: apelido e avatar (emoji) só para dar identidade à app, sem conta
+// nem servidor. Vive em localStorage, tal como o resto do progresso.
+function loadPerfil() {
+  let guardado = {};
+  try {
+    guardado = JSON.parse(localStorage.getItem(PERFIL_KEY)) || {};
+  } catch {
+    guardado = {};
+  }
+  return {
+    apelido: typeof guardado.apelido === "string" ? guardado.apelido : "",
+    avatar: AVATARES.includes(guardado.avatar) ? guardado.avatar : AVATARES[0],
+  };
+}
+
+function savePerfil() {
+  localStorage.setItem(PERFIL_KEY, JSON.stringify(perfil));
 }
 
 function getNota(trilhaId, blocoId, idx) {
@@ -1390,7 +1412,7 @@ function renderDashboardPage(container) {
 
   const header = document.createElement("div");
   header.className = "dash-header";
-  header.innerHTML = `<h2>Olá 👋</h2><p class="bloco-desc">${motivationalText(geral.pct)}</p>`;
+  header.innerHTML = `<h2>Olá${perfil.apelido ? `, ${escapeHtml(perfil.apelido)}` : ""} ${perfil.avatar}</h2><p class="bloco-desc">${motivationalText(geral.pct)}</p>`;
   container.appendChild(header);
 
   const grid = document.createElement("div");
@@ -1470,7 +1492,7 @@ const RENDERIZADORES_PAGINA = {
   explorar: (c) => renderPaginaEmConstrucao(c, "Explorar"),
   progresso: (c) => renderPaginaEmConstrucao(c, "Progresso"),
   conquistas: renderConquistasPage,
-  perfil: (c) => renderPaginaEmConstrucao(c, "Perfil"),
+  perfil: renderPerfilPage,
 };
 
 const ITENS_NAV = [
@@ -1589,6 +1611,128 @@ function renderMapaAtividade() {
   return wrap;
 }
 
+function renderPerfilPage(container) {
+  const ctx = contextoConquistas();
+  const geral = overallStats();
+
+  const header = document.createElement("div");
+  header.className = "dash-header";
+  header.innerHTML = `<h2>Perfil</h2><p class="bloco-desc">Só para dar cara à tua jornada. Fica guardado neste dispositivo, sem conta nem servidor.</p>`;
+  container.appendChild(header);
+
+  const cartao = document.createElement("div");
+  cartao.className = "dash-card perfil-cartao";
+
+  const identidade = document.createElement("div");
+  identidade.className = "perfil-identidade";
+  const avatarEl = document.createElement("div");
+  avatarEl.className = "perfil-avatar";
+  avatarEl.textContent = perfil.avatar;
+  identidade.appendChild(avatarEl);
+
+  const campos = document.createElement("div");
+  campos.className = "perfil-campos";
+
+  const labelApelido = document.createElement("label");
+  labelApelido.className = "perfil-label";
+  labelApelido.setAttribute("for", "perfil-apelido");
+  labelApelido.textContent = "Como queres ser tratado";
+  const inputApelido = document.createElement("input");
+  inputApelido.id = "perfil-apelido";
+  inputApelido.className = "perfil-input";
+  inputApelido.type = "text";
+  inputApelido.maxLength = 30;
+  inputApelido.placeholder = "O teu nome ou apelido";
+  inputApelido.value = perfil.apelido;
+  inputApelido.oninput = () => {
+    perfil.apelido = inputApelido.value.trim();
+    savePerfil();
+  };
+  campos.appendChild(labelApelido);
+  campos.appendChild(inputApelido);
+
+  const labelAvatar = document.createElement("span");
+  labelAvatar.className = "perfil-label";
+  labelAvatar.textContent = "Avatar";
+  campos.appendChild(labelAvatar);
+
+  const escolhaAvatar = document.createElement("div");
+  escolhaAvatar.className = "perfil-avatares";
+  escolhaAvatar.setAttribute("role", "radiogroup");
+  escolhaAvatar.setAttribute("aria-label", "Escolher avatar");
+  for (const emoji of AVATARES) {
+    const opcao = document.createElement("button");
+    opcao.type = "button";
+    opcao.className = "perfil-avatar-opcao" + (emoji === perfil.avatar ? " ativo" : "");
+    opcao.textContent = emoji;
+    opcao.setAttribute("role", "radio");
+    opcao.setAttribute("aria-checked", emoji === perfil.avatar ? "true" : "false");
+    opcao.setAttribute("aria-label", `Avatar ${emoji}`);
+    opcao.onclick = () => {
+      perfil.avatar = emoji;
+      savePerfil();
+      avatarEl.textContent = emoji;
+      [...escolhaAvatar.children].forEach((c) => {
+        const ativo = c.textContent === emoji;
+        c.classList.toggle("ativo", ativo);
+        c.setAttribute("aria-checked", ativo ? "true" : "false");
+      });
+      renderAppNav();
+    };
+    escolhaAvatar.appendChild(opcao);
+  }
+  campos.appendChild(escolhaAvatar);
+
+  identidade.appendChild(campos);
+  cartao.appendChild(identidade);
+  container.appendChild(cartao);
+
+  const stats = document.createElement("div");
+  stats.className = "dash-stats";
+  stats.style.marginTop = "var(--s5)";
+  stats.innerHTML = `
+    <div class="stat-card"><strong>${geral.done}</strong><span>exercícios concluídos</span></div>
+    <div class="stat-card"><strong>${geral.pct}%</strong><span>do total</span></div>
+    <div class="stat-card"><strong>${ctx.sequenciaAtual}</strong><span>dias em sequência</span></div>
+    <div class="stat-card"><strong>${ctx.blocosCompletos}</strong><span>blocos completos</span></div>
+  `;
+  container.appendChild(stats);
+
+  const atividadeCard = document.createElement("div");
+  atividadeCard.className = "dash-card";
+  atividadeCard.style.marginTop = "var(--s5)";
+  atividadeCard.innerHTML = `<div class="dash-card-topo"><span class="dash-card-eyebrow">Atividade recente</span></div>`;
+  atividadeCard.appendChild(renderMapaAtividade());
+  container.appendChild(atividadeCard);
+
+  const conquistadas = BADGES.filter((b) => b.verifica(ctx));
+  const recentes = document.createElement("div");
+  recentes.className = "dash-card";
+  recentes.style.marginTop = "var(--s5)";
+  recentes.innerHTML = `<div class="dash-card-topo"><span class="dash-card-eyebrow">Conquistas</span></div>`;
+  if (conquistadas.length) {
+    const lista = document.createElement("div");
+    lista.className = "conquistas-lista";
+    for (const badge of conquistadas) {
+      const item = document.createElement("div");
+      item.className = "conquista-card conquista-feita";
+      item.innerHTML = `
+        <div class="conquista-icone">${ICON_TROFEU}</div>
+        <div><strong>${badge.titulo}</strong><span>${badge.descricao}</span></div>
+      `;
+      lista.appendChild(item);
+    }
+    recentes.appendChild(lista);
+  } else {
+    const vazio = document.createElement("p");
+    vazio.className = "bloco-desc";
+    vazio.style.margin = "0";
+    vazio.textContent = "Ainda sem conquistas. Faz o primeiro exercício e começa a sequência.";
+    recentes.appendChild(vazio);
+  }
+  container.appendChild(recentes);
+}
+
 function renderConquistasPage(container) {
   const ctx = contextoConquistas();
 
@@ -1649,7 +1793,8 @@ function renderAppNav() {
   for (const item of ITENS_NAV) {
     const link = document.createElement("div");
     link.className = "app-nav-link" + (currentPage === item.id ? " active" : "");
-    link.innerHTML = `${item.icon}<span>${item.label}</span>`;
+    const icone = item.id === "perfil" ? `<span class="app-nav-avatar">${perfil.avatar}</span>` : item.icon;
+    link.innerHTML = `${icone}<span>${item.label}</span>`;
     tornarClicavel(link, () => {
       // "Minhas Trilhas" precisa de nível/trilha/bloco, ao contrário das
       // outras páginas da shell — navigateTo já sabe como preencher isso.
